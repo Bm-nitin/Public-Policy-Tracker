@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Environment Protection Act, 1986",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Environmental Regulation",
+    "change": "An umbrella legislation providing the central government authority to regulate pollution, set environmental standards, and control hazardous substances across industries.",
+    "impact": "Forms the backbone of environmental governance in India and enables regulation of industrial pollution. However, enforcement challenges remain in many regions."
+  },
+  {
+    "name": "Water (Prevention and Control of Pollution) Act, 1974",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Water Pollution Control",
+    "change": "Established Central and State Pollution Control Boards to monitor and regulate water pollution and enforce standards for waste discharge.",
+    "impact": "Improves water quality management and industrial regulation, though implementation varies across states."
+  },
+  {
+    "name": "Air (Prevention and Control of Pollution) Act, 1981",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Air Pollution Control",
+    "change": "Provides a framework for controlling air pollution through emission standards and regulatory oversight by pollution control boards.",
+    "impact": "Helps monitor and reduce air pollution levels, especially in industrial zones and urban areas."
+  },
+  {
+    "name": "Forest Conservation Act, 1980",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Forest Protection",
+    "change": "Restricts the diversion of forest land for non-forest purposes without central government approval.",
+    "impact": "Prevents deforestation and protects biodiversity, though development vs conservation conflicts continue."
+  },
+  {
+    "name": "Biological Diversity Act, 2002",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Biodiversity Conservation",
+    "change": "Regulates access to biological resources and promotes conservation through national and local biodiversity authorities.",
+    "impact": "Protects biodiversity and traditional knowledge, but awareness and enforcement need improvement."
+  },
+  {
+    "name": "National Action Plan on Climate Change, 2008",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Climate Strategy",
+    "change": "Introduced eight national missions focusing on solar energy, water conservation, sustainable agriculture, and climate research.",
+    "impact": "Provides a comprehensive framework for climate action and guides state-level climate policies. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "National Green Tribunal Act, 2010",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Environmental Justice",
+    "change": "Established a specialized tribunal for fast-track resolution of environmental disputes and enforcement of environmental laws.",
+    "impact": "Improves legal enforcement and accountability in environmental cases, though backlog issues still exist."
+  },
+  {
+    "name": "Green India Mission, 2014",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Afforestation",
+    "change": "Focuses on increasing forest cover and restoring degraded ecosystems through community participation and sustainable practices.",
+    "impact": "Enhances carbon sequestration and biodiversity while supporting rural livelihoods."
+  },
+  {
+    "name": "National Clean Air Programme, 2019",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Air Quality Management",
+    "change": "Targets reduction of particulate pollution in major cities through monitoring, emission control, and public awareness initiatives.",
+    "impact": "Improves urban air quality and public health, though achieving targets remains challenging."
+  },
+  {
+    "name": "Mission LiFE (Lifestyle for Environment), 2022",
+    "category": "Environment and Climate Policies",
+    "sub_category": "Sustainable Lifestyle",
+    "change": "Encourages individuals and communities to adopt environmentally sustainable habits such as reducing waste and conserving resources.",
+    "impact": "Promotes behavioral change alongside policy measures, supporting long-term sustainability goals."
+  }
+]

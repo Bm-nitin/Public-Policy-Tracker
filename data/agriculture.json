@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Pradhan Mantri Fasal Bima Yojana, 2016",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Crop Insurance",
+    "change": "The scheme provides comprehensive crop insurance coverage against natural calamities, pests, and diseases using technology like remote sensing and satellite data for faster claim settlement.",
+    "impact": "Reduces financial risk for farmers and ensures income stability. However, implementation challenges like delayed payouts and awareness gaps still exist."
+  },
+  {
+    "name": "PM-Kisan Samman Nidhi Scheme, 2019",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Farmer Income Support",
+    "change": "Direct income support of ₹6000 per year is provided to small and marginal farmers through direct benefit transfer into their bank accounts.",
+    "impact": "Provides immediate financial relief and supports basic agricultural needs. Limited impact on long-term productivity improvements."
+  },
+  {
+    "name": "National Agriculture Market (e-NAM), 2016",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Digital Agriculture",
+    "change": "Creation of a unified online trading platform for agricultural commodities to connect mandis across India and enable transparent price discovery.",
+    "impact": "Improves market access and reduces middlemen dependency. Adoption remains uneven due to digital literacy and infrastructure issues."
+  },
+  {
+    "name": "Soil Health Card Scheme, 2015",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Soil Management",
+    "change": "Farmers are provided with soil health cards containing nutrient status and fertilizer recommendations based on scientific soil testing.",
+    "impact": "Promotes balanced fertilizer usage and improves crop yield. Requires continuous monitoring and farmer awareness for effectiveness."
+  },
+  {
+    "name": "Pradhan Mantri Krishi Sinchai Yojana, 2015",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Irrigation",
+    "change": "Focus on expanding irrigation coverage and improving water-use efficiency through micro-irrigation and watershed development.",
+    "impact": "Enhances water availability and agricultural productivity. Implementation varies across regions due to infrastructure challenges."
+  },
+  {
+    "name": "Agriculture Infrastructure Fund, 2020",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Infrastructure Development",
+    "change": "Provides financial support for building storage facilities, cold chains, and post-harvest infrastructure through credit guarantees and subsidies.",
+    "impact": "Reduces post-harvest losses and improves supply chain efficiency. Encourages private sector participation in rural infrastructure."
+  },
+  {
+    "name": "National Mission on Sustainable Agriculture, 2014",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Sustainable Farming",
+    "change": "Promotes climate-resilient agriculture through water conservation, organic farming, and efficient resource management techniques.",
+    "impact": "Improves long-term sustainability and resilience to climate change. Adoption depends on farmer training and support systems."
+  },
+  {
+    "name": "Paramparagat Krishi Vikas Yojana, 2015",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Organic Farming",
+    "change": "Encourages cluster-based organic farming by providing financial assistance and certification support to farmers.",
+    "impact": "Promotes eco-friendly agriculture and increases market value of produce. Requires time for yield stabilization and market development."
+  },
+  {
+    "name": "Kisan Credit Card Expansion Policy, 2018",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "Agricultural Finance",
+    "change": "Expansion of credit access to farmers, including fisheries and animal husbandry sectors, through simplified loan processes and digital integration.",
+    "impact": "Improves access to timely credit and reduces dependence on informal lenders. Risk of debt accumulation if not managed properly."
+  },
+  {
+    "name": "Digital Agriculture Mission, 2021",
+    "category": "Agriculture and Rural Development Policies",
+    "sub_category": "AI in Agriculture",
+    "change": "Integration of AI, big data, and IoT technologies in agriculture for crop monitoring, yield prediction, and precision farming.",
+    "impact": "Enhances productivity and decision-making using data-driven insights. Requires digital infrastructure and farmer training for effective adoption."
+  }
+]

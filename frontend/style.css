@@ -1,0 +1,349 @@
+/* RESET */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  }
+
+/* BODY */
+body {
+font-family: Arial, sans-serif;
+background: #0f172a;
+color: #e2e8f0;
+min-height: 100vh;
+}
+
+/* ================= NAVBAR ================= */
+
+.navbar {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 15px 40px;
+background: #020617;
+border-bottom: 1px solid #1e293b;
+}
+
+.logo {
+font-size: 18px;
+font-weight: bold;
+color: #38bdf8;
+}
+
+/* NAV LINKS */
+
+.nav-links {
+list-style: none;
+display: flex;
+gap: 25px;
+}
+
+.nav-links li {
+cursor: pointer;
+transition: 0.2s;
+}
+
+.nav-links li:hover {
+color: #38bdf8;
+}
+
+/* RIGHT SIDE */
+
+.nav-right {
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+/* LOGOUT */
+
+.logout-btn {
+border: 1px solid #ef4444;
+background: transparent;
+color: #ef4444;
+padding: 6px 12px;
+border-radius: 6px;
+cursor: pointer;
+}
+
+.logout-btn:hover {
+background: #ef4444;
+color: white;
+}
+
+/* ================= HERO WRAPPER ================= */
+
+.hero-wrapper {
+max-width: 1200px;
+margin: 40px auto;
+padding: 40px;
+border-radius: 20px;
+background: #020617;
+border: 1px solid #1e293b;
+}
+
+/* ================= HERO ================= */
+
+.hero {
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 60px;
+flex-wrap: wrap;
+}
+
+/* LEFT */
+
+.hero-left {
+width: 50%;
+}
+
+.hero-left h1 {
+font-size: 40px;
+margin-bottom: 20px;
+}
+
+.hero-left span {
+color: #38bdf8;
+}
+
+.hero-left p {
+color: #94a3b8;
+margin-bottom: 25px;
+}
+
+/* BUTTONS */
+
+.hero-buttons {
+margin-bottom: 20px;
+}
+
+.primary-btn {
+background: #38bdf8;
+color: black;
+padding: 12px 18px;
+border-radius: 10px;
+border: none;
+cursor: pointer;
+transition: 0.2s;
+}
+
+.primary-btn:hover {
+background: #0ea5e9;
+}
+
+.secondary-btn {
+background: transparent;
+border: 1px solid #38bdf8;
+color: #38bdf8;
+padding: 12px 18px;
+border-radius: 10px;
+margin-left: 10px;
+cursor: pointer;
+}
+
+.secondary-btn:hover {
+background: #38bdf8;
+color: black;
+}
+
+/* QUICK TOPICS */
+
+.quick-topics span {
+display: inline-block;
+margin: 5px;
+padding: 8px 14px;
+background: #020617;
+border: 1px solid #1e293b;
+border-radius: 20px;
+cursor: pointer;
+font-size: 13px;
+transition: 0.2s;
+}
+
+.quick-topics span:hover {
+background: #38bdf8;
+color: black;
+}
+
+/* ================= CHAT ================= */
+
+.hero-right {
+width: 40%;
+display: flex;
+justify-content: center;
+}
+
+/* CHAT BOX */
+
+.container {
+width: 100%;
+max-width: 420px;
+height: 520px;
+background: #020617;
+border-radius: 16px;
+display: flex;
+flex-direction: column;
+border: 1px solid #1e293b;
+box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* HEADER */
+
+.header {
+background: #020617;
+color: #38bdf8;
+padding: 14px;
+font-size: 15px;
+font-weight: bold;
+border-bottom: 1px solid #1e293b;
+}
+
+/* CHAT BODY */
+
+#chatbox {
+flex: 1;
+padding: 15px;
+overflow-y: auto;
+display: flex;
+flex-direction: column;
+}
+
+/* MESSAGES */
+
+.message {
+margin: 10px 0;
+padding: 12px;
+border-radius: 14px;
+max-width: 75%;
+font-size: 14px;
+}
+
+.user {
+background: #38bdf8;
+color: black;
+align-self: flex-end;
+}
+
+.bot {
+background: #1e293b;
+color: #e2e8f0;
+align-self: flex-start;
+}
+
+/* INPUT */
+
+.input-area {
+display: flex;
+padding: 10px;
+border-top: 1px solid #1e293b;
+}
+
+input {
+flex: 1;
+padding: 10px;
+border: none;
+outline: none;
+border-radius: 8px;
+background: #1e293b;
+color: white;
+}
+
+button {
+margin-left: 10px;
+padding: 10px 14px;
+background: #38bdf8;
+color: black;
+border: none;
+border-radius: 8px;
+cursor: pointer;
+}
+
+button:hover {
+background: #0ea5e9;
+}
+
+/* SCROLLBAR */
+
+#chatbox::-webkit-scrollbar {
+width: 6px;
+}
+
+#chatbox::-webkit-scrollbar-thumb {
+background: #334155;
+border-radius: 10px;
+}
+
+#loginLink a {
+color: #d2dbdf;
+text-decoration: none;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 900px) {
+.hero-left,
+.hero-right {
+width: 100%;
+}
+
+
+.hero {
+    flex-direction: column;
+    text-align: center;
+}
+
+
+}
+.footer {
+margin-top: 40px;
+padding: 20px 40px;
+background: #020617;
+border-top: 1px solid #1e293b;
+}
+
+.footer-content {
+display: flex;
+justify-content: space-between;
+align-items: center;
+max-width: 1200px;
+margin: auto;
+}
+
+.footer-links a {
+margin-left: 20px;
+text-decoration: none;
+color: #94a3b8;
+font-size: 14px;
+transition: 0.2s;
+}
+
+.footer-links a:hover {
+color: #38bdf8;
+}
+
+.copyright {
+font-size: 14px;
+color: #64748b;
+}
+
+.disclaimer {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 10px;
+    line-height: 1.5;
+    max-width: 800px;
+}
+.privacy-text {
+    font-size: 14px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-top: 10px;
+}
+.terms-text {
+    font-size: 14px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-top: 10px;
+}

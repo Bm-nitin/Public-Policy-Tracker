@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Industrial Policy Resolution, 1956",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Industrial Framework",
+    "change": "Established a mixed economy model where both public and private sectors coexist, with key industries reserved for the state.",
+    "impact": "Laid the foundation of India’s industrial structure but limited private sector growth initially."
+  },
+  {
+    "name": "New Industrial Policy, 1991",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Liberalisation",
+    "change": "Dismantled industrial licensing, reduced government control, and opened sectors to private and foreign investment.",
+    "impact": "Boosted industrial growth, competition, and efficiency, marking a shift toward a market-driven economy."
+  },
+  {
+    "name": "Micro, Small and Medium Enterprises (MSME) Development Act, 2006",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "MSME Support",
+    "change": "Provided legal framework for MSMEs including credit access, protection against delayed payments, and promotion of small enterprises.",
+    "impact": "Strengthened MSME sector which contributes significantly to GDP and employment. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "Make in India Initiative, 2014",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Manufacturing Promotion",
+    "change": "Encouraged domestic manufacturing through policy reforms, ease of doing business, and FDI liberalization.",
+    "impact": "Boosted manufacturing sector and attracted global investment, though long-term output growth remains gradual."
+  },
+  {
+    "name": "Startup India Initiative, 2016",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Entrepreneurship",
+    "change": "Provides tax benefits, funding support, and simplified compliance for startups.",
+    "impact": "Promotes innovation and entrepreneurship, making India one of the largest startup ecosystems globally."
+  },
+  {
+    "name": "Stand-Up India Scheme, 2016",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Inclusive Entrepreneurship",
+    "change": "Provides bank loans to SC/ST and women entrepreneurs for starting new businesses.",
+    "impact": "Encourages inclusive business growth and reduces entry barriers for underrepresented groups."
+  },
+  {
+    "name": "Production Linked Incentive (PLI) Scheme, 2020",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Industrial Incentives",
+    "change": "Offers financial incentives to companies based on incremental production in key sectors like electronics and manufacturing.",
+    "impact": "Boosts domestic manufacturing and global competitiveness while attracting foreign investment."
+  },
+  {
+    "name": "Udyam Registration Portal, 2020",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "MSME Digitalization",
+    "change": "Introduced a simplified online registration system for MSMEs to access government benefits and schemes.",
+    "impact": "Improves ease of doing business for small enterprises and expands formalization of the sector. :contentReference[oaicite:1]{index=1}"
+  },
+  {
+    "name": "Atmanirbhar Bharat Industrial Package, 2020",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Self-Reliance",
+    "change": "Introduced financial support, credit guarantees, and policy reforms to strengthen domestic industries during COVID-19.",
+    "impact": "Supports MSMEs and domestic manufacturing, promoting self-reliance and resilience."
+  },
+  {
+    "name": "National Logistics Policy, 2022",
+    "category": "Industry and Business Development Policies",
+    "sub_category": "Business Efficiency",
+    "change": "Focuses on improving logistics infrastructure, reducing transportation costs, and enhancing supply chain efficiency.",
+    "impact": "Reduces cost of doing business and improves competitiveness of Indian industries in global markets."
+  }
+]

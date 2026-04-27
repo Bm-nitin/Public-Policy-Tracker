@@ -1,0 +1,148 @@
+/* RESET */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* CENTER CONTENT */
+.main-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* CONTAINER */
+.container {
+    width: 850px;
+    height: 500px;
+    background: #020617;
+    border-radius: 15px;
+    overflow: hidden;
+    display: flex;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+/* FORM SECTIONS */
+.form-container {
+    width: 50%;
+    padding: 50px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.sign-in,
+.sign-up {
+    background: #020617;
+}
+
+/* INPUTS */
+input {
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 6px;
+    border: none;
+    background: #1e293b;
+    color: white;
+}
+
+/* BUTTON */
+button {
+    margin-top: 15px;
+    padding: 12px;
+    border: none;
+    background: #38bdf8;
+    color: black;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #0ea5e9;
+}
+
+/* OVERLAY */
+.overlay {
+    position: absolute;
+    width: 50%;
+    height: 100%;
+    right: 0;
+    background: #38bdf8;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: 0.5s;
+}
+
+.overlay h2 {
+    margin-bottom: 10px;
+}
+
+.overlay button {
+    background: transparent;
+    border: 1px solid black;
+    color: black;
+}
+
+.container.active .overlay {
+    transform: translateX(-100%);
+}
+
+/* HOME BUTTON */
+.home-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.home-btn:hover {
+    background: #38bdf8;
+    color: black;
+}
+
+/* FOOTER */
+.footer {
+    padding: 20px;
+    background: #020617;
+    border-top: 1px solid #1e293b;
+}
+
+.footer-content {
+    max-width: 1000px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.footer-links a {
+    margin-left: 15px;
+    text-decoration: none;
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.footer-links a:hover {
+    color: #38bdf8;
+}
+
+.copyright {
+    font-size: 13px;
+    color: #64748b;
+}

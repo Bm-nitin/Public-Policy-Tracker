@@ -1,0 +1,72 @@
+[
+  {
+    "name": "National Health Policy, 2017",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Health System Reform",
+    "change": "Reoriented the public health system towards preventive and promotive care, expanded primary healthcare coverage, and set targets for reducing maternal and infant mortality.",
+    "impact": "Strengthens overall healthcare delivery and long-term public health outcomes, but depends heavily on state-level implementation and funding."
+  },
+  {
+    "name": "Ayushman Bharat - Pradhan Mantri Jan Arogya Yojana, 2018",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Health Insurance",
+    "change": "Provides health insurance coverage of up to ₹5 lakh per family per year for secondary and tertiary care hospitalization for economically vulnerable populations.",
+    "impact": "Improves access to hospital care and reduces out-of-pocket expenses, though hospital capacity and fraud control remain concerns."
+  },
+  {
+    "name": "National Digital Health Mission, 2020",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Digital Health",
+    "change": "Introduced digital health IDs, electronic health records, and integrated health data systems for seamless healthcare delivery.",
+    "impact": "Enhances efficiency and continuity of care through data integration. Raises concerns about data privacy and cybersecurity."
+  },
+  {
+    "name": "Jan Aushadhi Scheme Expansion, 2015",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Affordable Medicines",
+    "change": "Expansion of government-supported stores providing low-cost generic medicines across the country.",
+    "impact": "Reduces cost burden on patients and improves access to essential medicines, especially for low-income groups."
+  },
+  {
+    "name": "National Health Mission, 2013",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Primary Healthcare",
+    "change": "Integrated rural and urban health missions to strengthen primary healthcare infrastructure, maternal health services, and disease control programs.",
+    "impact": "Improves accessibility of healthcare in underserved areas, though quality and staffing challenges persist."
+  },
+  {
+    "name": "PM Ayushman Bharat Health Infrastructure Mission, 2021",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Health Infrastructure",
+    "change": "Focuses on strengthening health infrastructure including critical care units, labs, and disease surveillance systems.",
+    "impact": "Enhances preparedness for pandemics and improves healthcare capacity nationwide."
+  },
+  {
+    "name": "National Telemedicine Guidelines, 2020",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Telemedicine",
+    "change": "Legalized and standardized telemedicine practices, allowing remote consultation between doctors and patients using digital platforms.",
+    "impact": "Improves access to healthcare in remote areas and reduces hospital load. Requires digital literacy and internet access."
+  },
+  {
+    "name": "Universal Immunization Programme Expansion, 2014",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Public Health",
+    "change": "Expanded vaccine coverage to include additional diseases and increased focus on nationwide immunization drives.",
+    "impact": "Reduces child mortality and controls preventable diseases. Requires continuous awareness and logistical support."
+  },
+  {
+    "name": "National Mental Health Programme Strengthening, 2014",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Mental Health",
+    "change": "Expansion of mental health services, awareness programs, and integration into primary healthcare systems.",
+    "impact": "Improves recognition and treatment of mental health issues. Still faces stigma and shortage of professionals."
+  },
+  {
+    "name": "eSanjeevani Telehealth Platform, 2020",
+    "category": "Healthcare and Public Health Policies",
+    "sub_category": "Digital Health Services",
+    "change": "Government-supported telemedicine platform providing online doctor consultations across India.",
+    "impact": "Increases accessibility to medical advice and reduces travel burden for patients, especially in rural regions."
+  }
+]

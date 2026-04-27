@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+<button class="home-btn" onclick="goHome()">Home</button>
+
+<div class="main-content">
+
+    <div class="container" id="container">
+
+        <!-- SIGN UP -->
+        <div class="form-container sign-up">
+            <h2>Create Account</h2>
+            <input type="text" id="signupName" placeholder="Name">
+            <input type="email" id="signupEmail" placeholder="Email">
+            <input type="password" id="signupPassword" placeholder="Password (min 6 chars)">
+            <button onclick="signup()">Sign Up</button>
+        </div>
+
+        <!-- SIGN IN -->
+        <div class="form-container sign-in">
+            <h2>Sign In</h2>
+            <input type="email" id="loginEmail" placeholder="Email">
+            <input type="password" id="loginPassword" placeholder="Password">
+            <button onclick="login()">Sign In</button>
+        </div>
+
+        <!-- OVERLAY -->
+        <div class="overlay">
+            <div class="overlay-panel left">
+                <h2>Already have an account?</h2>
+                <button onclick="toggle()">Sign In</button>
+            </div>
+
+            <div class="overlay-panel right">
+                <h2>New here?</h2>
+                <button onclick="toggle()">Sign Up</button>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<footer class="footer">
+    <div class="footer-content">
+        <p>© 2026 Policy Tracker. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="#" onclick="showSection('disclaimer')">Disclaimer</a>
+            <a href="#" onclick="showSection('terms')">Terms</a>
+            <a href="#" onclick="showSection('privacy')">Privacy</a>
+        </div>
+    </div>
+</footer>
+
+<script src="auth.js"></script>
+
+<script>
+function goHome() {
+    window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>

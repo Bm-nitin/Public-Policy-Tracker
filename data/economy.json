@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Goods and Services Tax (GST), 2017",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Tax Reform",
+    "change": "Introduced a unified indirect tax system replacing multiple state and central taxes to create a single national market.",
+    "impact": "Simplifies taxation and improves ease of doing business, though initial implementation challenges affected small businesses. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "Insolvency and Bankruptcy Code, 2016",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Financial Regulation",
+    "change": "Established a time-bound process for resolving insolvency and bankruptcy cases for companies and individuals.",
+    "impact": "Improves credit discipline and recovery of bad loans, strengthening the banking system."
+  },
+  {
+    "name": "Make in India Initiative, 2014",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Industrial Policy",
+    "change": "Promotes domestic manufacturing through policy reforms, FDI liberalization, and ease of doing business measures.",
+    "impact": "Boosts industrial growth and job creation, though manufacturing share growth has been gradual."
+  },
+  {
+    "name": "Startup India Initiative, 2016",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Entrepreneurship",
+    "change": "Provides tax exemptions, funding support, and simplified compliance for startups.",
+    "impact": "Encourages innovation and entrepreneurship, contributing to growth of India’s startup ecosystem."
+  },
+  {
+    "name": "Pradhan Mantri Jan Dhan Yojana, 2014",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Financial Inclusion",
+    "change": "A nationwide financial inclusion program providing bank accounts, debit cards, and insurance to unbanked populations.",
+    "impact": "Expands access to financial services and enables direct benefit transfers, improving economic participation. :contentReference[oaicite:1]{index=1}"
+  },
+  {
+    
+  "name": "Demonetization Policy, 2016",
+  "category": "Economic and Financial Policies",
+  "sub_category": "Monetary Policy",
+  "change": "High-value currency notes were withdrawn overnight to reduce black money, counterfeit currency, and promote digital transactions.",
+  "impact": "Increased digital payments and formalization of the economy, but caused severe short-term disruption in cash-dependent sectors, especially agriculture and small businesses."
+ },
+  {
+    "name": "Production Linked Incentive (PLI) Scheme, 2020",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Industrial Incentives",
+    "change": "Provides financial incentives to companies based on incremental production in sectors like electronics and manufacturing.",
+    "impact": "Encourages domestic production and attracts global investment, boosting manufacturing competitiveness."
+  },
+  {
+    "name": "National Infrastructure Pipeline, 2019",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Infrastructure Investment",
+    "change": "A large-scale investment plan covering sectors like transport, energy, and urban infrastructure.",
+    "impact": "Drives economic growth and job creation through infrastructure development."
+  },
+  {
+    "name": "Atmanirbhar Bharat Abhiyan, 2020",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Economic Stimulus",
+    "change": "Economic stimulus package focusing on self-reliance, MSME support, and domestic manufacturing during COVID-19 recovery.",
+    "impact": "Supports economic recovery and promotes domestic industries, though long-term outcomes depend on execution."
+  },
+  {
+    "name": "Foreign Direct Investment (FDI) Liberalization Policy, 2015",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Investment Policy",
+    "change": "Relaxation of FDI norms across sectors like defense, retail, and aviation to attract foreign investment.",
+    "impact": "Increases capital inflow and global integration of the Indian economy, supporting growth and job creation. :contentReference[oaicite:2]{index=2}"
+  },
+  {
+  "name": "Bank Nationalisation Policy, 1969",
+  "category": "Economic and Financial Policies",
+  "sub_category": "Banking Reform",
+  "change": "Major private banks were nationalized to expand credit access to agriculture, small industries, and rural areas.",
+  "impact": "Improved financial inclusion and rural banking access, but later led to inefficiencies and rising non-performing assets."
+}
+]

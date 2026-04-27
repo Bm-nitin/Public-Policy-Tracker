@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Digital India Programme, 2015",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Digital Infrastructure",
+    "change": "A nationwide initiative to build digital infrastructure, expand internet connectivity, and deliver government services online through platforms like Aadhaar, UPI, and DigiLocker.",
+    "impact": "Transforms governance and public service delivery through digital platforms. However, challenges remain in cybersecurity and bridging the digital divide."
+  },
+  {
+    "name": "IndiaAI Mission, 2024",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Artificial Intelligence",
+    "change": "A national initiative to develop AI infrastructure, including GPU clusters, AI research funding, and development of indigenous large language models.",
+    "impact": "Accelerates AI innovation and strengthens India’s position in global AI development. Requires strong governance for ethical AI use."
+  },
+  {
+    "name": "Digital Personal Data Protection Act, 2023",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Data Privacy",
+    "change": "Introduces regulations for collection, processing, and storage of personal data with user consent, accountability, and penalties for misuse.",
+    "impact": "Enhances user privacy and trust in digital systems but increases compliance burden for organizations."
+  },
+  {
+    "name": "Information Technology Act Amendment Framework, 2021",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Cyber Law",
+    "change": "Updated intermediary guidelines and digital media regulations to control online content, strengthen platform accountability, and regulate social media.",
+    "impact": "Improves regulation of online platforms but raises concerns about freedom of expression and over-regulation."
+  },
+  {
+    "name": "National Cyber Security Strategy, 2020",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Cybersecurity",
+    "change": "Framework for protecting critical digital infrastructure, enhancing cyber defense mechanisms, and promoting AI-based threat detection systems.",
+    "impact": "Strengthens national security and digital resilience. Requires continuous upgrades due to evolving cyber threats."
+  },
+  {
+    "name": "Semiconductor Mission Policy, 2021",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Hardware Innovation",
+    "change": "Provides incentives and infrastructure support for semiconductor manufacturing and chip design in India.",
+    "impact": "Reduces dependency on imports and boosts domestic tech manufacturing ecosystem."
+  },
+  {
+    "name": "National Blockchain Strategy, 2022",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Emerging Technologies",
+    "change": "Promotes adoption of blockchain technology in governance, supply chain management, and financial systems.",
+    "impact": "Enhances transparency and security in digital transactions but requires regulatory clarity."
+  },
+  {
+    "name": "5G Deployment Policy, 2022",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Telecom Infrastructure",
+    "change": "Rollout of 5G spectrum and infrastructure to enable high-speed connectivity and support IoT, AI, and smart city applications.",
+    "impact": "Enables next-generation technologies and innovation. Requires significant investment in infrastructure."
+  },
+  {
+    "name": "Open Network for Digital Commerce (ONDC), 2021",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Digital Economy",
+    "change": "Creation of an open digital network to decentralize e-commerce and allow small businesses to participate in online marketplaces.",
+    "impact": "Reduces monopoly of large platforms and promotes competition and inclusivity in digital commerce."
+  },
+  {
+    "name": "AI Ethics and Governance Framework, 2025",
+    "category": "Digital Technology and AI Policies",
+    "sub_category": "Responsible AI",
+    "change": "Establishes guidelines for ethical AI development, including fairness, transparency, accountability, and bias mitigation in AI systems.",
+    "impact": "Ensures responsible AI adoption and builds trust in automated systems. Requires enforcement and monitoring mechanisms."
+  }
+]

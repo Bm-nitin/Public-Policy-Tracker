@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Right to Information Act, 2005",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Transparency Law",
+    "change": "Gives citizens the legal right to access government records and information to ensure transparency in public administration.",
+    "impact": "Empowers citizens and improves accountability in governance, though delays and misuse of exemptions remain challenges."
+  },
+  {
+    "name": "Lokpal and Lokayuktas Act, 2013",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Anti-Corruption",
+    "change": "Establishes independent anti-corruption bodies at central and state levels to investigate complaints against public officials.",
+    "impact": "Strengthens anti-corruption mechanisms, but effectiveness depends on independence and enforcement. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "Information Technology Act, 2000",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Cyber Law",
+    "change": "Provides legal recognition to electronic records, digital signatures, and enables e-governance services.",
+    "impact": "Forms the foundation of digital governance and online transactions, though needs updates for modern cyber threats. :contentReference[oaicite:1]{index=1}"
+  },
+  {
+    "name": "Companies Act, 2013",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Corporate Governance",
+    "change": "Defines rules for company formation, board responsibilities, disclosures, and corporate governance practices.",
+    "impact": "Improves accountability and transparency in corporate sector, protecting stakeholder interests. :contentReference[oaicite:2]{index=2}"
+  },
+  {
+    "name": "SEBI Listing Obligations and Disclosure Regulations, 2015",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Market Regulation",
+    "change": "Mandates governance standards, disclosures, and board structure requirements for listed companies.",
+    "impact": "Enhances investor protection and transparency in capital markets. :contentReference[oaicite:3]{index=3}"
+  },
+  {
+    "name": "Directive Principles of State Policy, 1950",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Constitutional Governance",
+    "change": "Provides guidelines for the government to create laws promoting social justice, welfare, and equitable development.",
+    "impact": "Shapes long-term policy direction of the country, though not legally enforceable. :contentReference[oaicite:4]{index=4}"
+  },
+  {
+    "name": "National e-Governance Plan, 2006",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Digital Governance",
+    "change": "Introduced a framework for delivering government services electronically across sectors.",
+    "impact": "Improves efficiency, accessibility, and transparency in public service delivery."
+  },
+  {
+    "name": "Jan Vishwas (Amendment of Provisions) Bill, 2026",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Regulatory Reform",
+    "change": "Aims to decriminalize minor offenses and promote trust-based governance to improve ease of doing business.",
+    "impact": "Reduces regulatory burden and encourages compliance, though maintaining enforcement balance is critical. :contentReference[oaicite:5]{index=5}"
+  },
+  {
+    "name": "National Sports Governance Act, 2025",
+    "category": "Governance and Legal Policies",
+    "sub_category": "Institutional Governance",
+    "change": "Establishes a legal framework for governance, transparency, and dispute resolution in sports organizations.",
+    "impact": "Improves accountability and professionalism in sports administration. :contentReference[oaicite:6]{index=6}"
+  },
+  {
+    "name": "AI Governance Framework (Techno-Legal), 2025",
+    "category": "Governance and Legal Policies",
+    "sub_category": "AI Regulation",
+    "change": "Introduces guidelines for responsible AI development, focusing on accountability, fairness, and legal compliance.",
+    "impact": "Supports safe and ethical AI deployment while balancing innovation and regulation. :contentReference[oaicite:7]{index=7}"
+  }
+]

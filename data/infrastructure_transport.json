@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Pradhan Mantri Gram Sadak Yojana (PMGSY), 2000",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Rural Connectivity",
+    "change": "A national program to provide all-weather road connectivity to unconnected rural villages across India.",
+    "impact": "Improves rural mobility, access to markets, education, and healthcare. Plays a key role in reducing rural isolation."
+  },
+  {
+    "name": "Golden Quadrilateral Project, 2001",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Highway Development",
+    "change": "A major highway network connecting Delhi, Mumbai, Chennai, and Kolkata through high-speed road corridors.",
+    "impact": "Boosts trade, reduces travel time, and strengthens national connectivity and economic integration."
+  },
+  {
+    "name": "National Highways Development Programme (NHDP), 1998",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Highway Expansion",
+    "change": "Large-scale development and upgrading of national highways including expressways and multi-lane roads.",
+    "impact": "Enhances logistics efficiency and supports economic growth through improved road infrastructure."
+  },
+  {
+    "name": "Sagarmala Programme, 2015",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Port Development",
+    "change": "Focuses on port modernization, coastal connectivity, and development of port-led industrialization.",
+    "impact": "Reduces logistics cost and improves export competitiveness through efficient port infrastructure."
+  },
+  {
+    "name": "Bharatmala Pariyojana, 2017",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Road Infrastructure",
+    "change": "A comprehensive road development program to improve highway connectivity, economic corridors, and border roads.",
+    "impact": "Strengthens national connectivity and reduces transportation time for goods and passengers."
+  },
+  {
+    "name": "UDAN (Ude Desh ka Aam Nagrik) Scheme, 2016",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Regional Aviation",
+    "change": "Aims to make air travel affordable and connect underserved and unserved airports across India.",
+    "impact": "Improves regional connectivity and boosts tourism and economic development in smaller cities."
+  },
+  {
+    "name": "Dedicated Freight Corridor (DFC) Project, 2006",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Rail Logistics",
+    "change": "Construction of high-capacity freight-only railway corridors to improve cargo movement efficiency.",
+    "impact": "Reduces congestion on passenger rail lines and improves logistics speed and reliability."
+  },
+  {
+    "name": "Metro Rail Policy, 2017",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Urban Transport",
+    "change": "Guidelines for planning and implementing metro rail projects in cities with focus on public-private partnerships.",
+    "impact": "Improves urban mobility and reduces traffic congestion, though high costs remain a concern."
+  },
+  {
+    "name": "PM Gati Shakti National Master Plan, 2021",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Integrated Infrastructure",
+    "change": "A digital platform integrating multiple infrastructure projects across ministries for coordinated planning and execution.",
+    "impact": "Improves efficiency and reduces delays by enabling integrated, multi-modal connectivity planning. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "National Infrastructure Pipeline (NIP), 2019",
+    "category": "Transport and Infrastructure Policies",
+    "sub_category": "Infrastructure Investment",
+    "change": "A large-scale investment plan covering sectors like transport, energy, and urban infrastructure.",
+    "impact": "Drives economic growth through large infrastructure investments and job creation."
+  }
+]

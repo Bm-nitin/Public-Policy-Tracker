@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Banking Regulation Act, 1949",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Banking Regulation",
+    "change": "Established a regulatory framework for banks in India and strengthened the role of the Reserve Bank of India in supervising banking operations.",
+    "impact": "Improved stability and control over the banking system, reducing risks of bank failures."
+  },
+  {
+    "name": "Bank Nationalisation Policy, 1969",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Banking Reform",
+    "change": "Major private banks were nationalized to expand credit access to agriculture, small industries, and rural areas.",
+    "impact": "Improved financial inclusion and rural banking access but led to inefficiencies and rising non-performing assets."
+  },
+  {
+    "name": "Bank Nationalisation Expansion, 1980",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Public Sector Banking",
+    "change": "Additional banks were brought under government control to strengthen public sector dominance in banking.",
+    "impact": "Expanded reach of banking services but increased government control reduced operational efficiency."
+  },
+  {
+    "name": "Narasimham Committee Reforms, 1991",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Banking Liberalisation",
+    "change": "Introduced structural reforms including deregulation, private bank entry, capital adequacy norms, and NPA recognition.",
+    "impact": "Improved efficiency, competition, and transparency in the banking sector."
+  },
+  {
+    "name": "Narasimham Committee II, 1998",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Banking Strengthening",
+    "change": "Focused on bank consolidation, stronger capital norms, and improved governance structures.",
+    "impact": "Strengthened financial stability and prepared banks for global competition."
+  },
+  {
+    "name": "SARFAESI Act, 2002",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Loan Recovery",
+    "change": "Allowed banks to recover non-performing assets without court intervention through asset seizure.",
+    "impact": "Improved recovery of bad loans and reduced banking sector stress."
+  },
+  {
+    "name": "Pradhan Mantri Jan Dhan Yojana, 2014",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Financial Inclusion",
+    "change": "Mass opening of bank accounts for unbanked populations with direct benefit transfer integration.",
+    "impact": "Expanded banking access and enabled digital financial inclusion."
+  },
+  {
+    "name": "Insolvency and Bankruptcy Code, 2016",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Financial Reform",
+    "change": "Introduced time-bound insolvency resolution process for companies and individuals.",
+    "impact": "Improved credit discipline and strengthened banking sector health."
+  },
+  {
+    "name": "Public Sector Bank Merger Policy, 2019",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Bank Consolidation",
+    "change": "Merged multiple public sector banks to create larger, stronger banking institutions.",
+    "impact": "Improved efficiency, capital strength, and global competitiveness of Indian banks."
+  },
+  {
+    "name": "Digital Banking and UPI Expansion Policy, 2020",
+    "category": "Economic and Financial Policies",
+    "sub_category": "Digital Banking",
+    "change": "Expansion of digital payment systems like UPI and mobile banking platforms across India.",
+    "impact": "Revolutionized payments and financial access, making India a global leader in digital banking."
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Electricity Act, 2003",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Power Sector Reform",
+    "change": "Introduced deregulation in electricity generation, allowed private sector participation, and created regulatory commissions for tariff and distribution oversight.",
+    "impact": "Improved competition and efficiency in the power sector, but issues like DISCOM losses and power theft still persist."
+  },
+  {
+    "name": "National Electricity Policy, 2005",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Power Planning",
+    "change": "Outlined long-term strategies for power generation, transmission, and distribution with focus on universal electricity access.",
+    "impact": "Guided expansion of power infrastructure and rural electrification, though supply reliability remains uneven."
+  },
+  {
+    "name": "Rajiv Gandhi Grameen Vidyutikaran Yojana, 2005",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Rural Electrification",
+    "change": "Focused on providing electricity connections to rural households and infrastructure in villages.",
+    "impact": "Significantly increased rural electrification, though quality and continuity of supply remain concerns."
+  },
+  {
+    "name": "National Solar Mission, 2010",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Solar Energy",
+    "change": "Promoted large-scale solar power generation through subsidies, solar parks, and capacity targets.",
+    "impact": "Triggered rapid growth in solar energy capacity and reduced dependence on fossil fuels. Solar capacity has increased massively over the last decade. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "Ujwal DISCOM Assurance Yojana (UDAY), 2015",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Power Distribution Reform",
+    "change": "A financial restructuring scheme aimed at improving the health of power distribution companies by reducing debt and improving efficiency.",
+    "impact": "Helped reduce financial stress of DISCOMs initially, but long-term sustainability challenges remain."
+  },
+  {
+    "name": "Saubhagya Scheme, 2017",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Universal Electrification",
+    "change": "Provided last-mile electricity connections to all households, especially in rural and remote areas.",
+    "impact": "Achieved near-universal household electrification, improving quality of life and economic opportunities."
+  },
+  {
+    "name": "National Wind Energy Mission, 2014",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Wind Energy",
+    "change": "Focused on expanding wind power capacity through incentives, policy support, and infrastructure development.",
+    "impact": "Increased renewable energy share and supported clean energy transition, though intermittency remains a challenge."
+  },
+  {
+    "name": "Hydro Power Development Policy, 2008",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Hydropower",
+    "change": "Encouraged development of hydroelectric projects through financial incentives and regulatory support.",
+    "impact": "Supports renewable energy generation and grid stability but raises environmental and displacement concerns."
+  },
+  {
+    "name": "National Bio-Energy Mission, 2018",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Bio Energy",
+    "change": "Promotes use of biomass, biogas, and waste-to-energy technologies for power generation and fuel production.",
+    "impact": "Reduces waste and supports clean energy production, though scalability remains a challenge. :contentReference[oaicite:1]{index=1}"
+  },
+  {
+    "name": "Green Hydrogen Mission, 2023",
+    "category": "Energy and Natural Resources Policies",
+    "sub_category": "Hydrogen Energy",
+    "change": "Promotes production and use of green hydrogen as a clean fuel alternative for industries and transport.",
+    "impact": "Supports long-term decarbonization and energy independence, but requires high investment and technological advancement. :contentReference[oaicite:2]{index=2}"
+  }
+]

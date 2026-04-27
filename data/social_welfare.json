@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA), 2005",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Employment Guarantee",
+    "change": "Provides a legal guarantee of 100 days of wage employment per year to rural households for unskilled manual work.",
+    "impact": "Acts as a safety net for rural poor and reduces distress migration, though issues like delayed payments and inefficiency exist."
+  },
+  {
+    "name": "Public Distribution System (PDS) Reform, 2013",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Food Security",
+    "change": "Ensures subsidized distribution of essential food grains like rice and wheat to low-income households through ration shops.",
+    "impact": "Reduces hunger and ensures food security, but faces challenges like leakage and targeting inefficiencies."
+  },
+  {
+    "name": "National Food Security Act, 2013",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Food Security Law",
+    "change": "Provides legal entitlement to subsidized food grains to approximately two-thirds of the population.",
+    "impact": "Strengthens food security and reduces poverty, though it puts pressure on fiscal resources."
+  },
+  {
+    "name": "Pradhan Mantri Shram Yogi Maandhan, 2019",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Pension Scheme",
+    "change": "A voluntary pension scheme for unorganized sector workers providing a fixed monthly pension after retirement.",
+    "impact": "Provides social security for informal workers, though awareness and enrollment remain limited. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "National Social Assistance Programme (NSAP), 1995",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Social Security",
+    "change": "Provides financial assistance to elderly, widows, and disabled individuals living below the poverty line.",
+    "impact": "Supports vulnerable populations with basic income security, though benefit amounts are relatively low."
+  },
+  {
+    "name": "Direct Benefit Transfer (DBT) Policy, 2013",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Cash Transfer",
+    "change": "Transfers subsidies and welfare benefits directly into beneficiaries’ bank accounts using Aadhaar-linked systems.",
+    "impact": "Reduces corruption and leakage in welfare delivery, but exclusion errors can occur due to technical issues. :contentReference[oaicite:1]{index=1}"
+  },
+  {
+    "name": "Beti Bachao Beti Padhao Scheme, 2015",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Women Empowerment",
+    "change": "Focuses on improving child sex ratio and promoting education and empowerment of girls.",
+    "impact": "Raises awareness about gender equality and improves female education, though measurable impact varies across regions."
+  },
+  {
+    "name": "Pradhan Mantri Ujjwala Yojana, 2016",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Clean Energy Access",
+    "change": "Provides free LPG connections to women from below poverty line households to replace traditional cooking fuels.",
+    "impact": "Improves health outcomes and reduces indoor pollution, though refill affordability remains a concern."
+  },
+  {
+    "name": "Atal Pension Yojana, 2015",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Pension Scheme",
+    "change": "Encourages workers in the unorganized sector to save for retirement with guaranteed pension benefits.",
+    "impact": "Promotes long-term financial security, but participation depends on financial awareness."
+  },
+  {
+    "name": "One Nation One Ration Card Scheme, 2020",
+    "category": "Social Welfare and Inclusion Policies",
+    "sub_category": "Food Security Portability",
+    "change": "Allows beneficiaries to access subsidized food grains from any ration shop across India using digital authentication.",
+    "impact": "Improves portability for migrant workers and ensures continuous access to food support. :contentReference[oaicite:2]{index=2}"
+  }
+]

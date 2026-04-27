@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Scientific Policy Resolution, 1958",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Science Policy",
+    "change": "Established the importance of scientific research and development as a national priority, focusing on building scientific institutions and human resources.",
+    "impact": "Laid the foundation for India's scientific growth and institutional development, enabling long-term innovation capacity."
+  },
+  {
+    "name": "Establishment of IIT System, 1951",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Technical Education",
+    "change": "Creation of premier engineering institutions to develop highly skilled technical manpower.",
+    "impact": "Produced a strong scientific workforce that contributed to global and domestic technological advancement."
+  },
+  {
+    "name": "Atomic Energy Programme, 1948",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Nuclear Technology",
+    "change": "Development of nuclear energy capabilities for peaceful and strategic purposes under government control.",
+    "impact": "Strengthened energy security and positioned India as a nuclear-capable nation."
+  },
+  {
+    "name": "ISRO Formation Policy, 1969",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Space Research",
+    "change": "Establishment of a national space agency to develop satellite, launch vehicle, and space applications.",
+    "impact": "Enabled India to become a global leader in cost-effective space technology and satellite services."
+  },
+  {
+    "name": "Department of Biotechnology Policy, 1986",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Biotechnology",
+    "change": "Creation of a dedicated department to promote biotechnology research in agriculture, medicine, and industry.",
+    "impact": "Boosted innovation in healthcare, agriculture, and industrial biotechnology."
+  },
+  {
+    "name": "Technology Policy Statement, 1983",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Technology Development",
+    "change": "Focused on technological self-reliance and development of indigenous capabilities.",
+    "impact": "Encouraged domestic innovation and reduced dependence on foreign technology."
+  },
+  {
+    "name": "Information Technology Policy, 1998",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "IT Sector",
+    "change": "Promoted software development, IT exports, and digital infrastructure growth.",
+    "impact": "Transformed India into a global IT hub and boosted economic growth."
+  },
+  {
+    "name": "National Innovation Policy, 2013",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Innovation Ecosystem",
+    "change": "Focused on fostering innovation through collaboration between academia, industry, and government.",
+    "impact": "Strengthened startup ecosystem and research commercialization."
+  },
+  {
+    "name": "Digital India Programme, 2015",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Digital Transformation",
+    "change": "Promoted digital infrastructure, e-governance, and digital services across the country.",
+    "impact": "Revolutionized access to services and enabled large-scale digital inclusion."
+  },
+  {
+    "name": "National AI Strategy, 2018",
+    "category": "Science, Innovation and Space Policies",
+    "sub_category": "Artificial Intelligence",
+    "change": "Focused on developing AI capabilities in sectors like healthcare, agriculture, and education.",
+    "impact": "Positioned India as an emerging player in AI and advanced technologies."
+  }
+]

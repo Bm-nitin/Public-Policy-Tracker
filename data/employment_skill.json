@@ -1,0 +1,72 @@
+[
+  {
+    "name": "National Policy on Skill Development, 2009",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Skill Policy",
+    "change": "Established a national framework to develop employable skills among youth through vocational training, industry partnerships, and expansion of skill institutions.",
+    "impact": "Laid the foundation for structured skill development in India, though implementation initially remained limited in scale. :contentReference[oaicite:0]{index=0}"
+  },
+  {
+    "name": "Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA), 2005",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Employment Guarantee",
+    "change": "Provides a legal guarantee of 100 days of wage employment to rural households for unskilled work.",
+    "impact": "Acts as a safety net for rural employment and reduces poverty, but does not directly address long-term skill development."
+  },
+  {
+    "name": "Deen Dayal Upadhyaya Grameen Kaushalya Yojana (DDU-GKY), 2014",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Rural Skill Development",
+    "change": "Provides skill training and placement support to rural youth, especially from poor households, with focus on industry-relevant skills.",
+    "impact": "Improves employability of rural youth, though placement quality and sustainability remain concerns. :contentReference[oaicite:1]{index=1}"
+  },
+  {
+    "name": "Skill India Mission, 2015",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "National Skilling Mission",
+    "change": "A comprehensive initiative to provide large-scale skill training through programs like PMKVY, apprenticeships, and ITIs aligned with industry needs.",
+    "impact": "Expanded access to skill training and improved employability, though skill-job mismatch remains a challenge. :contentReference[oaicite:2]{index=2}"
+  },
+  {
+    "name": "Pradhan Mantri Kaushal Vikas Yojana (PMKVY), 2015",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Vocational Training",
+    "change": "Provides short-term training, certification, and financial rewards for skill development in various sectors.",
+    "impact": "Increases skill certification and training reach, but placement outcomes are inconsistent. :contentReference[oaicite:3]{index=3}"
+  },
+  {
+    "name": "National Apprenticeship Promotion Scheme (NAPS), 2016",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Apprenticeship",
+    "change": "Encourages employers to provide on-the-job training through financial incentives and simplified apprenticeship regulations.",
+    "impact": "Promotes industry-linked training and practical skills, improving job readiness."
+  },
+  {
+    "name": "SANKALP Scheme, 2018",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Skill Ecosystem Reform",
+    "change": "Focuses on strengthening institutional mechanisms for skill development and improving quality of training programs.",
+    "impact": "Improves governance of skill programs and alignment with industry requirements. :contentReference[oaicite:4]{index=4}"
+  },
+  {
+    "name": "Jan Shikshan Sansthan (JSS) Scheme Expansion, 2018",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Adult Skill Training",
+    "change": "Provides vocational training to non-literate and school dropout adults, especially in rural areas.",
+    "impact": "Enhances livelihood opportunities for marginalized groups and promotes inclusive skill development. :contentReference[oaicite:5]{index=5}"
+  },
+  {
+    "name": "Skill India Programme Restructuring, 2022",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Integrated Skilling",
+    "change": "Merged major skill schemes like PMKVY, NAPS, and JSS into a unified program to create a demand-driven, technology-enabled training system.",
+    "impact": "Improves coordination and efficiency in skill development initiatives and promotes a future-ready workforce. :contentReference[oaicite:6]{index=6}"
+  },
+  {
+    "name": "Employment Linked Incentive Scheme, 2025",
+    "category": "Employment and Skill Development Policies",
+    "sub_category": "Job Creation",
+    "change": "Provides financial incentives to employers and first-time employees to encourage job creation and workforce participation.",
+    "impact": "Supports employment generation and reduces entry barriers for new workers, though long-term sustainability depends on economic growth. :contentReference[oaicite:7]{index=7}"
+  }
+]

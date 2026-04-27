@@ -1,0 +1,72 @@
+[
+  {
+    "name": "National Education Policy, 2020",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "Higher Education Reform",
+    "change": "Introduced multidisciplinary education, flexible degree structures, and integration of digital learning platforms across institutions.",
+    "impact": "Improves flexibility and encourages interdisciplinary learning. Enhances employability but requires institutional restructuring."
+  },
+  {
+    "name": "National Digital Education Architecture (NDEAR), 2021",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "Digital Education",
+    "change": "Creation of a unified digital infrastructure for education including platforms for content delivery, student data management, and teacher training.",
+    "impact": "Enables scalable digital learning and better governance. Raises concerns about data privacy and access inequality."
+  },
+  {
+    "name": "PM eVIDYA Programme, 2020",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "Online Learning",
+    "change": "Launch of multi-mode digital education including TV channels, online platforms, and mobile apps to support remote learning.",
+    "impact": "Expands access to education during disruptions like pandemics. Limited effectiveness in areas with poor connectivity."
+  },
+  {
+    "name": "SWAYAM Online Education Initiative, 2017",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "MOOCs",
+    "change": "Provides free online courses from top institutions with credit transfer options for higher education students.",
+    "impact": "Promotes self-paced learning and increases access to quality education. Requires learner motivation and digital access."
+  },
+  {
+    "name": "National Skill Development Mission, 2015",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "Skill Development",
+    "change": "Focus on vocational training, industry partnerships, and skill certification programs aligned with job market needs.",
+    "impact": "Improves employability and workforce readiness. Implementation varies across regions."
+  },
+  {
+    "name": "AI in Education Initiative, 2024",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "AI Education",
+    "change": "Integration of AI concepts and tools into school and college curricula, including machine learning basics and ethical AI practices.",
+    "impact": "Prepares students for future technologies and promotes innovation. Requires teacher upskilling and infrastructure support."
+  },
+  {
+    "name": "Academic Bank of Credits System, 2021",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "Credit System",
+    "change": "Allows students to store and transfer academic credits across institutions and courses digitally.",
+    "impact": "Provides flexibility in education pathways and supports lifelong learning. Needs strong institutional coordination."
+  },
+  {
+    "name": "Samagra Shiksha Scheme, 2018",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "School Education",
+    "change": "Integrated scheme covering school education from pre-primary to senior secondary levels with focus on inclusive education.",
+    "impact": "Improves school infrastructure and access to education. Implementation quality varies by state."
+  },
+  {
+    "name": "National Research Foundation Proposal, 2020",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "Research Development",
+    "change": "Establishment of a central body to fund and promote research across disciplines, including emerging technologies.",
+    "impact": "Boosts innovation and research output. Encourages collaboration between academia and industry."
+  },
+  {
+    "name": "Digital University Initiative, 2022",
+    "category": "Education, Skills and Research Policies",
+    "sub_category": "Online Higher Education",
+    "change": "Creation of a fully digital university offering online degrees and courses with standardized content delivery.",
+    "impact": "Expands access to higher education nationwide. Raises concerns about quality assurance and digital divide."
+  }
+]

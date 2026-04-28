@@ -3,6 +3,7 @@ from policy_loader import load_policies
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
+import random
 import re
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,15 +58,48 @@ def call_generative_ai(user_input):
         print("🔥 REAL ERROR:", e)
         return "AI service unavailable."
   
+def is_policy_related(user_input):
+    text = clean_text(user_input)
 
+    allowed_keywords = [
+        "policy", "policies", "scheme", "government",
+        "agriculture", "health", "education",
+        "technology", "economy", "environment",
+        "farmer", "tax", "bank", "insurance"
+    ]
+
+    return any(word in text for word in allowed_keywords)
 
 def get_response(user_input):
+
     user_input_clean = clean_text(user_input)
 
+    # 1. CATEGORY FIRST
+    category = detect_category(user_input)
+
+    if category:
+        related = [
+            p for p in policies
+            if any(
+                word in (
+                    p.get("name", "") + " " +
+                    p.get("category", "") + " " +
+                    p.get("impact", "")
+                ).lower()
+                for word in CATEGORY_KEYWORDS.get(category, [])
+            )
+        ]
+
+        if related:
+            return format_multiple(related[:3], category)
+
+        # ❗ DO NOT RETURN HERE
+        # Let it go to AI fallback
+
+    # 2. similarity match
     best_match = None
     best_score = 0
 
-    # 🔍 1. similarity match
     for policy in policies:
         name_clean = clean_text(policy.get("name", ""))
         score = similarity_score(user_input_clean, name_clean)
@@ -77,27 +111,13 @@ def get_response(user_input):
     if best_match and best_score > 0.55:
         return format_response(best_match)
 
-    # 🔍 2. keyword match
+    # 3. keyword match
     kw_match, kw_score = match_by_keywords(user_input, policies)
 
     if kw_match and kw_score > 0.2:
         return format_response(kw_match)
 
-    # 🎯 3. category → sector match
-    category = detect_category(user_input)
-
-    if category:
-        related = [
-            p for p in policies
-            if p.get("sector") == category
-        ]
-
-        if related:
-            return format_multiple(related[:2], category)
-
-        return f"No policies found in {category} sector."
-
-    # 🤖 4. fallback AI
+    # 4. AI fallback (NOW IT WILL RUN)
     return call_generative_ai(user_input)
 
 

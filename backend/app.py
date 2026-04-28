@@ -3,7 +3,7 @@ from flask_cors import CORS
 from chatbot import get_response
 from policy_loader import load_policies
 import traceback
-
+import os
 app = Flask(__name__)
 
 # Allow frontend requests
@@ -60,4 +60,5 @@ def get_policies():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

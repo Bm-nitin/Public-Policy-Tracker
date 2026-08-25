@@ -13,7 +13,6 @@ load_dotenv(dotenv_path=ENV_PATH)
 
 API_KEY = os.getenv("API_KEY")
 
-print("DEBUG KEY:", API_KEY)  # keep this for now
 
 genai.configure(api_key=API_KEY)
 
@@ -31,13 +30,24 @@ CATEGORY_KEYWORDS = {
 
 def detect_category(user_input):
     text = clean_text(user_input)
+    words = text.split()
 
     scores = {}
     for category, keywords in CATEGORY_KEYWORDS.items():
-        scores[category] = sum(1 for word in keywords if word in text)
+        scores[category] = sum(1 for word in keywords if word in words)
+
+    if max(scores.values()) == 0:
+        return None
 
     best = max(scores, key=scores.get)
-    return best if scores[best] > 0 else None
+
+    # ✅ SMART LOGIC
+    # If user directly mentions category → accept
+    if best in words:
+        return best
+
+    # Otherwise require stronger match
+    return best if scores[best] >= 1 else None
 
 def clean_ai_response(text):
     text = re.sub(r':contentReference\[.*?\]', '', text)
@@ -46,17 +56,23 @@ def clean_ai_response(text):
 # 🤖 Gemini fallback
 def call_generative_ai(user_input):
     try:
-        model = genai.GenerativeModel("gemini-flash-latest")
+        print(f"[AI REQUEST] {user_input}")
 
+        model = genai.GenerativeModel("gemini-flash-latest")
         response = model.generate_content(user_input)
 
-        raw = response.text if hasattr(response, "text") else str(response)
+        raw = getattr(response, "text", None)
+
+        # print(f"[AI RESPONSE] {raw}")
+
+        if not raw:
+            return "No response from AI."
 
         return clean_ai_response(raw)
 
     except Exception as e:
-        print("🔥 REAL ERROR:", e)
-        return "AI service unavailable."
+        print("REAL ERROR:", repr(e))
+        return f"AI service error: {str(e)}"
   
 def is_policy_related(user_input):
     text = clean_text(user_input)
@@ -81,11 +97,7 @@ def get_response(user_input):
         related = [
             p for p in policies
             if any(
-                word in (
-                    p.get("name", "") + " " +
-                    p.get("category", "") + " " +
-                    p.get("impact", "")
-                ).lower()
+                word in clean_text(p.get("name", "")).split()
                 for word in CATEGORY_KEYWORDS.get(category, [])
             )
         ]
@@ -93,8 +105,7 @@ def get_response(user_input):
         if related:
             return format_multiple(related[:3], category)
 
-        # ❗ DO NOT RETURN HERE
-        # Let it go to AI fallback
+        
 
     # 2. similarity match
     best_match = None
@@ -108,13 +119,13 @@ def get_response(user_input):
             best_score = score
             best_match = policy
 
-    if best_match and best_score > 0.55:
+    if best_match and best_score > 0.8:
         return format_response(best_match)
 
     # 3. keyword match
     kw_match, kw_score = match_by_keywords(user_input, policies)
 
-    if kw_match and kw_score > 0.2:
+    if kw_match and kw_score > 0.5:
         return format_response(kw_match)
 
     # 4. AI fallback (NOW IT WILL RUN)

@@ -1,5 +1,4 @@
 const API_URL = "https://policy-tracker-b8a3.onrender.com/chat";
-
 let isLoading = false;
 
 // Run after page loads

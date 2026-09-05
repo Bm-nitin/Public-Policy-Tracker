@@ -1,6 +1,6 @@
 from utils import clean_text, similarity_score, match_by_keywords
 from policy_loader import load_policies
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 import os
 import re
@@ -10,10 +10,18 @@ ENV_PATH = os.path.join(BASE_DIR, ".env")
 
 load_dotenv(dotenv_path=ENV_PATH)
 
-API_KEY = os.getenv("API_KEY")
+API_KEY = (
+    os.getenv("GEMINI_API_KEY")
+    or os.getenv("GOOGLE_API_KEY")
+    or os.getenv("API_KEY")
+)
+
+client = None
 
 if API_KEY:
-    genai.configure(api_key=API_KEY)
+    API_KEY = API_KEY.strip().strip('"').strip("'")
+    client = genai.Client(api_key=API_KEY)
+
 
 policies = load_policies()
 
@@ -179,29 +187,19 @@ def clean_ai_response(text):
 
 
 def call_generative_ai(user_input):
-    """
-    Gemini fallback.
-
-    If Gemini is unavailable or the API key is invalid,
-    return a clean user-friendly message instead of exposing
-    the raw Google API error.
-    """
-
-    if not API_KEY:
-        print("[AI ERROR] API_KEY is missing")
+    if not API_KEY or client is None:
+        print("[AI ERROR] Gemini API key is missing")
         return (
             "AI assistance is currently unavailable. "
-            "Please ask about a government policy or scheme "
-            "from the available sectors."
+            "Please try a policy-related question from the available sectors."
         )
 
     try:
         print(f"[AI REQUEST] {user_input}")
 
-        model = genai.GenerativeModel("gemini-flash-latest")
-
-        response = model.generate_content(
-            f"""
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=f"""
 You are a public policy assistant.
 
 Answer only questions related to:
@@ -235,8 +233,7 @@ User question:
 
         return (
             "AI assistance is currently unavailable. "
-            "Please try a policy-related question from the "
-            "available sectors."
+            "Please try a policy-related question from the available sectors."
         )
 
 

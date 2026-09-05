@@ -1,5 +1,5 @@
 flask
 flask-cors
 python-dotenv
-google-generativeai
+google-genai
 gunicorn

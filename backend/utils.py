@@ -1,67 +1,93 @@
 import re
 from difflib import SequenceMatcher
 
+
 def clean_text(text):
     if not isinstance(text, str):
         return ""
 
     text = text.lower()
+
+    # Keep letters and numbers
     text = re.sub(r'[^a-z0-9 ]', ' ', text)
+
     text = re.sub(r'\s+', ' ', text).strip()
 
     return text
 
 
 def similarity_score(a, b):
+
     if not a or not b:
         return 0
 
-    return SequenceMatcher(None, a, b).ratio()
+    return SequenceMatcher(
+        None,
+        clean_text(a),
+        clean_text(b)
+    ).ratio()
 
 
 def extract_keywords(text):
+
     words = clean_text(text).split()
 
     stopwords = {
-        "what", "is", "the", "in", "of", "about",
-        "tell", "me", "give", "latest", "new",
-        "policy", "change", "show", "all", "list",
-        "information", "details"
+        "what", "is", "the", "in", "of",
+        "about", "tell", "me", "give",
+        "latest", "new", "show", "all",
+        "list", "information", "details",
+        "please", "can", "you", "explain",
+        "describe", "policy", "policies",
+        "change", "changes"
     }
 
-    keywords = [word for word in words if word not in stopwords and len(word) > 2]
-
-    return keywords
+    return [
+        word
+        for word in words
+        if word not in stopwords and len(word) > 2
+    ]
 
 
 def match_by_keywords(user_input, policies):
+
     keywords = extract_keywords(user_input)
 
-    if len(keywords) == 0:
+    if not keywords:
         return None, 0
 
     best_match = None
     best_score = 0
 
     for policy in policies:
-        text = " ".join([
+
+        policy_text = " ".join([
             policy.get("name", ""),
             policy.get("change", ""),
-            policy.get("impact", "")
+            policy.get("impact", ""),
+            policy.get("category", ""),
+            policy.get("sub_category", ""),
+            policy.get("sector", "")
         ])
 
-        text = clean_text(text)
-        text_words = set(text.split())
+        policy_words = set(
+            clean_text(policy_text).split()
+        )
 
-        match_count = sum(1 for word in keywords if word in text_words)
+        matches = sum(
+            1
+            for keyword in keywords
+            if keyword in policy_words
+        )
 
-        score = match_count / len(keywords)
+        score = matches / len(keywords)
 
         if score > best_score:
             best_score = score
             best_match = policy
 
-    if best_score < 0.2:
+    # Weak matches are ignored
+    if best_score < 0.20:
         return None, 0
 
     return best_match, best_score

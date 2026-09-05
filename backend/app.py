@@ -36,10 +36,11 @@ def chat():
         if not user_input.strip():
             return jsonify({"reply": "Empty message"}), 400
 
-        print(f"User Input: {user_input}")
+        print(f"[INPUT] {user_input}")
 
-        # Call chatbot
         result = get_response(user_input)
+
+        print(f"[OUTPUT] {result}")
 
         return jsonify({"reply": result})
 

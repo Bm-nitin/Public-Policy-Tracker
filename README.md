@@ -18,6 +18,6 @@ AI-powered chatbot for tracking and analyzing public policy changes across secto
 ## ▶️ How to Run
 
 1. Start backend:
-```bash
+
 cd backend
 python app.py

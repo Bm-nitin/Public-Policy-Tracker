@@ -3,6 +3,10 @@ flask-cors>=4.0
 python-dotenv>=1.0
 flask-sqlalchemy>=3.1
 flask-migrate>=4.0
+# Argon2id password hashing (Phase 3). argon2-cffi is the standard,
+# actively maintained Python binding; PasswordHasher() defaults to the
+# Argon2id variant with automatic per-hash random salts.
+argon2-cffi>=23.1
 # psycopg (v3) is the actively maintained PostgreSQL driver (psycopg2 is in
 # maintenance-only mode). DATABASE_URL should use the postgresql+psycopg://
 # scheme to select it - see .env.example.

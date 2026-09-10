@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from config import Config
 from database import init_db
+from auth_routes import auth_bp
 from chatbot import get_response
 from policy_loader import load_policies
 import traceback
@@ -16,12 +17,17 @@ Config.validate()
 # CORS_ORIGINS is set in .env.
 CORS(app, resources={r"/*": {"origins": Config.CORS_ORIGINS}})
 
-# Database (Phase 2 foundation - no models/tables/queries used yet).
-# Only wired up when DATABASE_URL is actually set, so the app keeps
-# importing and every existing route keeps working with no database
-# configured at all, exactly as before this phase.
+# Database (Phase 2 foundation). Only wired up when DATABASE_URL is
+# actually set, so the app keeps importing and every pre-Phase-3 route
+# keeps working with no database configured at all.
 if Config.DATABASE_URL:
     init_db(app, Config.DATABASE_URL)
+
+# Phase 3: registration endpoint (POST /api/auth/register). The blueprint
+# itself checks Config.DATABASE_URL before touching db.session, so
+# registering it here is safe even when no database is configured - the
+# route will just return a 503 for that one endpoint.
+app.register_blueprint(auth_bp)
 
 
 # Health check

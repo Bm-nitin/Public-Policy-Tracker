@@ -71,10 +71,25 @@ def test_no_hardcoded_api_key_in_tracked_backend_source():
 
 def test_chatbot_reads_api_key_only_from_environment(chatbot_module):
     """Confirms the key is sourced via os.getenv(...) at import time, not a
-    literal - checked structurally via the source file, not by reading the
-    resolved value out of the running module (which would risk leaking it
-    into a failure message)."""
+    literal - checked structurally via source, not by reading the resolved
+    value out of the running module (which would risk leaking it into a
+    failure message).
+
+    PHASE 1 UPDATE: as of the Phase 1 configuration foundation, chatbot.py
+    no longer calls os.getenv() itself - it imports API_KEY from the new
+    backend/config.py, which now owns all environment-variable resolution.
+    This test was updated to check config.py instead of chatbot.py; the
+    thing it verifies (the key comes from the environment, never a
+    literal) is unchanged, only its location moved.
+    """
+    config_source_path = os.path.join(ROOT_DIR, "backend", "config.py")
+    with open(config_source_path, encoding="utf-8") as f:
+        config_source = f.read()
+    assert "os.getenv(" in config_source
+
+    # chatbot.py itself should now source the key via Config, not inline.
     chatbot_source_path = os.path.join(ROOT_DIR, "backend", "chatbot.py")
     with open(chatbot_source_path, encoding="utf-8") as f:
-        source = f.read()
-    assert "os.getenv(" in source
+        chatbot_source = f.read()
+    assert "Config.GEMINI_API_KEY" in chatbot_source
+    assert "os.getenv(" not in chatbot_source

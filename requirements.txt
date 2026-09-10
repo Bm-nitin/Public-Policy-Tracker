@@ -1,5 +1,10 @@
-flask
-flask-cors
-python-dotenv
+flask>=3.0
+flask-cors>=4.0
+python-dotenv>=1.0
+# Left unpinned: the google-genai SDK is young and changes quickly, and this
+# environment has no network access to verify a safe version range against
+# the code in backend/chatbot.py (client.models.generate_content(...)).
+# Before relying on this in a new deploy, run `pip freeze` in the actual
+# target environment and pin the exact working version here.
 google-genai
-gunicorn
+gunicorn>=21.0

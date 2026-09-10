@@ -1,13 +1,19 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from config import Config
 from chatbot import get_response
 from policy_loader import load_policies
 import traceback
-import os
 app = Flask(__name__)
 
-# Allow frontend requests
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Non-fatal startup checks (e.g. missing Gemini key, unrestricted CORS).
+# Logs warnings only - never blocks the app from starting, preserving the
+# existing graceful-degradation behavior.
+Config.validate()
+
+# Allow frontend requests. Defaults to "*" (same as before) unless
+# CORS_ORIGINS is set in .env.
+CORS(app, resources={r"/*": {"origins": Config.CORS_ORIGINS}})
 
 
 # Health check
@@ -61,5 +67,4 @@ def get_policies():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host=Config.HOST, port=Config.PORT)

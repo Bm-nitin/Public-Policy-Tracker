@@ -1,25 +1,19 @@
 from utils import clean_text, similarity_score, match_by_keywords
 from policy_loader import load_policies
 from google import genai
-from dotenv import load_dotenv
-import os
+from config import Config
 import re
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENV_PATH = os.path.join(BASE_DIR, ".env")
-
-load_dotenv(dotenv_path=ENV_PATH)
-
-API_KEY = (
-    os.getenv("GEMINI_API_KEY")
-    or os.getenv("GOOGLE_API_KEY")
-    or os.getenv("API_KEY")
-)
+# API_KEY / client are kept as module-level names (rather than only
+# living on Config) because call_generative_ai() below reads them
+# directly, and the Phase 0.5 test suite monkeypatches
+# chatbot.API_KEY / chatbot.client to simulate missing-key and
+# mocked-Gemini scenarios without any network access.
+API_KEY = Config.GEMINI_API_KEY
 
 client = None
 
 if API_KEY:
-    API_KEY = API_KEY.strip().strip('"').strip("'")
     client = genai.Client(api_key=API_KEY)
 
 
@@ -198,7 +192,7 @@ def call_generative_ai(user_input):
         print(f"[AI REQUEST] {user_input}")
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=Config.GEMINI_MODEL,
             contents=f"""
 You are a public policy assistant.
 

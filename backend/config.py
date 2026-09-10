@@ -59,6 +59,14 @@ class Config:
     HOST = os.getenv("HOST", "0.0.0.0")
     PORT = int(os.getenv("PORT", 5000))
 
+    # --- Database (Phase 2) ---
+    # Expected form: postgresql+psycopg://user:password@host:5432/dbname
+    # Left unset by default - the app must remain fully importable and the
+    # existing routes must keep working with no database configured at
+    # all (see backend/database.py). Never logged/printed anywhere,
+    # including in Config.validate() below - only whether it's set.
+    DATABASE_URL = os.getenv("DATABASE_URL")
+
     @classmethod
     def validate(cls):
         """Non-fatal startup checks. Logs actionable warnings but never
@@ -81,6 +89,16 @@ class Config:
                 "CORS_ORIGINS is not set - defaulting to '*' (any origin "
                 "allowed). Set CORS_ORIGINS in .env to restrict this "
                 "before relying on it in production."
+            )
+
+        if not cls.DATABASE_URL:
+            warnings.append(
+                "DATABASE_URL is not set - database features are disabled "
+                "for this run. All existing endpoints (/, /health, "
+                "/policies, /chat) continue to work from the JSON policy "
+                "files as before; set DATABASE_URL in .env "
+                "(postgresql+psycopg://user:password@host:5432/dbname) "
+                "once a database is available."
             )
 
         for warning in warnings:

@@ -1,19 +1,27 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from config import Config
+from database import init_db
 from chatbot import get_response
 from policy_loader import load_policies
 import traceback
 app = Flask(__name__)
 
-# Non-fatal startup checks (e.g. missing Gemini key, unrestricted CORS).
-# Logs warnings only - never blocks the app from starting, preserving the
-# existing graceful-degradation behavior.
+# Non-fatal startup checks (e.g. missing Gemini key, unrestricted CORS,
+# unconfigured database). Logs warnings only - never blocks the app from
+# starting, preserving the existing graceful-degradation behavior.
 Config.validate()
 
 # Allow frontend requests. Defaults to "*" (same as before) unless
 # CORS_ORIGINS is set in .env.
 CORS(app, resources={r"/*": {"origins": Config.CORS_ORIGINS}})
+
+# Database (Phase 2 foundation - no models/tables/queries used yet).
+# Only wired up when DATABASE_URL is actually set, so the app keeps
+# importing and every existing route keeps working with no database
+# configured at all, exactly as before this phase.
+if Config.DATABASE_URL:
+    init_db(app, Config.DATABASE_URL)
 
 
 # Health check

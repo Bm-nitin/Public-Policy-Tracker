@@ -1,0 +1,15 @@
+Single-database configuration for Flask.
+
+This directory was hand-authored to match the standard structure produced
+by `flask db init` (Flask-Migrate), because the flask-migrate/alembic
+packages could not be installed in the sandbox used to author Phase 2 (no
+network access). Before relying on this in a real environment, run:
+
+    pip install -r requirements.txt
+    flask db init
+
+...pointed at a scratch directory and diff the result against this
+`migrations/` folder to confirm they match your installed Flask-Migrate
+version's exact template output. Functionally, `env.py` and
+`script.py.mako` here are the stable, well-known Flask-Migrate templates
+and have not been customized beyond the standard wiring to `database.db`.

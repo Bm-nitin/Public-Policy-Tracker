@@ -1,6 +1,12 @@
 flask>=3.0
 flask-cors>=4.0
 python-dotenv>=1.0
+flask-sqlalchemy>=3.1
+flask-migrate>=4.0
+# psycopg (v3) is the actively maintained PostgreSQL driver (psycopg2 is in
+# maintenance-only mode). DATABASE_URL should use the postgresql+psycopg://
+# scheme to select it - see .env.example.
+psycopg[binary]>=3.1
 # Left unpinned: the google-genai SDK is young and changes quickly, and this
 # environment has no network access to verify a safe version range against
 # the code in backend/chatbot.py (client.models.generate_content(...)).

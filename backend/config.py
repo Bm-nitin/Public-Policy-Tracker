@@ -67,6 +67,22 @@ class Config:
     # including in Config.validate() below - only whether it's set.
     DATABASE_URL = os.getenv("DATABASE_URL")
 
+    # --- Email (Phase 4) ---
+    # Used by backend/email_service.py. MAIL_PASSWORD is never printed or
+    # logged anywhere in this codebase - Config.validate() below only
+    # reports whether mail is configured, never any credential value.
+    MAIL_HOST = os.getenv("MAIL_HOST")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+    MAIL_FROM = os.getenv("MAIL_FROM")
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").strip().lower() not in ("false", "0", "no")
+
+    # --- Frontend (Phase 4) ---
+    # Used to build verification links (FRONTEND_URL + "/verify-email?token=...").
+    # Deliberately not defaulted to localhost/Render - see backend/email_service.py.
+    FRONTEND_URL = os.getenv("FRONTEND_URL")
+
     @classmethod
     def validate(cls):
         """Non-fatal startup checks. Logs actionable warnings but never
@@ -99,6 +115,23 @@ class Config:
                 "files as before; set DATABASE_URL in .env "
                 "(postgresql+psycopg://user:password@host:5432/dbname) "
                 "once a database is available."
+            )
+
+        if not cls.MAIL_HOST:
+            warnings.append(
+                "MAIL_HOST is not set - verification emails cannot be "
+                "sent. Registration will still create accounts (per "
+                "documented Phase 4 policy), but the email step will "
+                "fail until MAIL_HOST/MAIL_USERNAME/MAIL_PASSWORD/"
+                "MAIL_FROM are configured in .env."
+            )
+
+        if not cls.FRONTEND_URL:
+            warnings.append(
+                "FRONTEND_URL is not set - verification links cannot be "
+                "built. Set FRONTEND_URL in .env (e.g. "
+                "https://your-frontend.example) before relying on email "
+                "verification."
             )
 
         for warning in warnings:

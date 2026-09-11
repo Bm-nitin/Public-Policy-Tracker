@@ -9,8 +9,9 @@ Postmark, a real mailbox, etc. all speak SMTP), so this stays provider-
 agnostic without depending on a specific commercial API.
 
 auth_routes.py never touches smtplib directly - it only calls
-send_verification_email(), keeping SMTP details out of the route layer
-per the Phase 4 brief.
+send_verification_email() / send_password_reset_email() (the latter added
+in Phase 6, reusing send_email()/EmailSendError rather than a second
+email implementation), keeping SMTP details out of the route layer.
 """
 
 import smtplib
@@ -88,3 +89,36 @@ def send_verification_email(user, raw_token):
     subject, body = build_verification_email(user.name, verification_url)
     send_email(user.email, subject, body)
     return verification_url
+
+
+def build_password_reset_email(user_name, reset_url):
+    subject = f"Reset your {APP_NAME} password"
+    body = (
+        f"Hi {user_name},\n\n"
+        f"We received a request to reset your {APP_NAME} password. "
+        f"Click the link below to choose a new one:\n\n"
+        f"{reset_url}\n\n"
+        f"This link expires in {Config.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES} "
+        f"minutes and can only be used once.\n\n"
+        f"If you didn't request this, you can safely ignore this email - "
+        f"your password will not be changed.\n\n"
+        f"- {APP_NAME}"
+    )
+    return subject, body
+
+
+def build_password_reset_url(raw_token):
+    if not Config.FRONTEND_URL:
+        raise EmailSendError("Cannot build a password reset link: FRONTEND_URL is not configured.")
+    base = Config.FRONTEND_URL.rstrip("/")
+    return f"{base}/reset-password?token={raw_token}"
+
+
+def send_password_reset_email(user, raw_token):
+    """Same shape as send_verification_email() - see that function. The
+    reset URL is returned for tests/callers, never logged by this
+    function itself (see the Phase 6 brief's "do not log reset URLs")."""
+    reset_url = build_password_reset_url(raw_token)
+    subject, body = build_password_reset_email(user.name, reset_url)
+    send_email(user.email, subject, body)
+    return reset_url

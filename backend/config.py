@@ -114,6 +114,13 @@ class Config:
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true").strip().lower() not in ("false", "0", "no")
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "None")
 
+    # --- Password reset (Phase 6) ---
+    # Deliberately much shorter than email verification's 24h window -
+    # a reset link is a higher-value credential (it changes a password)
+    # so it should be usable for a shorter time.
+    PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRY_MINUTES", 30))
+    PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = int(os.getenv("PASSWORD_RESET_RESEND_COOLDOWN_SECONDS", 60))
+
     @classmethod
     def validate(cls):
         """Non-fatal startup checks. Logs actionable warnings but never

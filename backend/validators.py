@@ -1,9 +1,13 @@
 """
-Phase 3: registration input validation.
+Registration and password input validation.
 
 Pure functions only - no database access, no password hashing, no Flask
 request object. This keeps validation rules independently testable and
 keeps auth_routes.py thin.
+
+validate_password() is shared between registration (Phase 3) and password
+reset (Phase 6) so both flows enforce exactly the same rules from one
+place, rather than two copies that could quietly drift apart.
 """
 
 import re
@@ -25,6 +29,26 @@ def normalize_email(email):
     normalization step, not a content change - it does not alter the
     name field, and does not alter the local part's characters."""
     return email.strip().lower()
+
+
+def validate_password(password):
+    """Validates a password value in isolation (type, non-empty, length
+    bounds only - no knowledge of "is this a registration or a reset").
+    Returns a list of error strings, empty if valid. Does not check for
+    a missing key - callers that distinguish "field absent" from "field
+    present but invalid" (like validate_registration_payload below) check
+    that themselves before calling this."""
+    errors = []
+    if not isinstance(password, str):
+        errors.append("password must be a string")
+    elif not password:
+        errors.append("password must not be empty")
+    else:
+        if len(password) < MIN_PASSWORD_LENGTH:
+            errors.append(f"password must be at least {MIN_PASSWORD_LENGTH} characters")
+        if len(password) > MAX_PASSWORD_LENGTH:
+            errors.append(f"password must be {MAX_PASSWORD_LENGTH} characters or fewer")
+    return errors
 
 
 def validate_registration_payload(data):
@@ -70,15 +94,8 @@ def validate_registration_payload(data):
 
     if "password" not in data:
         errors.append("password is required")
-    elif not isinstance(password, str):
-        errors.append("password must be a string")
-    elif not password:
-        errors.append("password must not be empty")
     else:
-        if len(password) < MIN_PASSWORD_LENGTH:
-            errors.append(f"password must be at least {MIN_PASSWORD_LENGTH} characters")
-        if len(password) > MAX_PASSWORD_LENGTH:
-            errors.append(f"password must be {MAX_PASSWORD_LENGTH} characters or fewer")
+        errors.extend(validate_password(password))
 
     if errors:
         return errors, None

@@ -1,17 +1,23 @@
 """
-Registration, email verification, and session (login/logout) endpoints.
+Registration, email verification, session (login/logout), and password
+reset endpoints.
 
 Phase 3 added POST /api/auth/register. Phase 4 added:
     GET  /api/auth/verify-email?token=<token>
     POST /api/auth/resend-verification
 
-Phase 5 adds:
+Phase 5 added:
     POST /api/auth/login
     POST /api/auth/logout
     GET  /api/auth/me
 
-See backend/sessions.py for the actual session token/cookie mechanics and
-the reusable get_current_user()/login_required helper this phase adds.
+Phase 6 adds:
+    POST /api/auth/forgot-password
+    POST /api/auth/reset-password
+
+See backend/sessions.py for session mechanics and
+backend/verification_tokens.py for the shared high-entropy token
+generation/hashing both email verification and password reset build on.
 """
 
 from datetime import datetime, timezone
@@ -21,8 +27,8 @@ from sqlalchemy.exc import IntegrityError
 
 from config import Config
 from database import db
-from email_service import EmailSendError, send_verification_email
-from models import EmailVerificationToken, User, UserSession
+from email_service import EmailSendError, send_password_reset_email, send_verification_email
+from models import EmailVerificationToken, PasswordResetToken, User, UserSession
 from security import hash_password, verify_password
 from sessions import (
     clear_session_cookie,
@@ -36,9 +42,15 @@ from validators import (
     MAX_EMAIL_LENGTH,
     MAX_PASSWORD_LENGTH,
     normalize_email,
+    validate_password,
     validate_registration_payload,
 )
-from verification_tokens import ensure_aware_utc, generate_verification_token, hash_token
+from verification_tokens import (
+    ensure_aware_utc,
+    generate_password_reset_token,
+    generate_verification_token,
+    hash_token,
+)
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -365,3 +377,149 @@ def me():
     this phase adds is actually exercised by a route, not just tested in
     isolation."""
     return jsonify({"user": g.current_user.to_public_dict()}), 200
+
+
+_GENERIC_FORGOT_PASSWORD_RESPONSE = {
+    "message": "If an account with that email exists, a password reset link has been sent."
+}
+_GENERIC_RESET_PASSWORD_ERROR = ("Invalid or expired password reset link", 400)
+
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    """No separate POST /api/auth/resend-password-reset endpoint: this
+    route already accepts just an email and is safe to call repeatedly
+    (unlike registration, which only makes sense once) - calling it again
+    IS the resend mechanism, with its own cooldown/supersede logic below,
+    mirroring Phase 4's resend_verification(). A second endpoint doing
+    the same thing would just be a duplicate implementation.
+
+    Deliberately does NOT require email_verified - an unverified user can
+    still request a password reset (documented Phase 6 decision). This
+    cannot become a verification bypass because reset_password() below
+    never touches email_verified either way.
+    """
+    if not Config.DATABASE_URL:
+        return _database_unavailable_response("Password reset")
+
+    data = request.get_json(silent=True) or {}
+    email = data.get("email")
+
+    generic_response = jsonify(_GENERIC_FORGOT_PASSWORD_RESPONSE), 200
+
+    if not isinstance(email, str) or not email.strip() or len(email) > MAX_EMAIL_LENGTH:
+        return generic_response
+
+    user = User.query.filter_by(email=normalize_email(email)).first()
+    if user is None:
+        return generic_response
+
+    existing_tokens = PasswordResetToken.query.filter_by(user_id=user.id).all()
+    active_tokens = [t for t in existing_tokens if t.used_at is None]
+
+    now = datetime.now(timezone.utc)
+    if active_tokens:
+        most_recent_created_at = max(ensure_aware_utc(t.created_at) for t in active_tokens)
+        seconds_since_last = (now - most_recent_created_at).total_seconds()
+        if seconds_since_last < Config.PASSWORD_RESET_RESEND_COOLDOWN_SECONDS:
+            # Cooldown in effect - same generic response, no indication
+            # given to the caller either way.
+            return generic_response
+
+    # Supersede any still-active tokens so only the newest one works.
+    for token in active_tokens:
+        token.used_at = now
+        db.session.add(token)
+
+    raw_token, token_hash_value, expires_at = generate_password_reset_token()
+    new_token = PasswordResetToken(
+        user_id=user.id, token_hash=token_hash_value, expires_at=expires_at,
+    )
+    db.session.add(new_token)
+    db.session.commit()
+
+    try:
+        send_password_reset_email(user, raw_token)
+    except EmailSendError:
+        # Same documented policy as elsewhere: don't fail the request or
+        # reveal anything - the token exists either way, and calling
+        # this endpoint again (after the cooldown) can retry.
+        pass
+
+    return generic_response
+
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    """Validates the reset token server-side (never trusting any
+    client-supplied user id/email as authorization - the token itself is
+    the only credential that matters), atomically consumes it, replaces
+    the password, and revokes every existing session for that user.
+    Never authenticates the caller - they must log in again with the new
+    password (see the Phase 6 brief's explicit flow diagram)."""
+    if not Config.DATABASE_URL:
+        return _database_unavailable_response("Password reset")
+
+    data = request.get_json(silent=True) or {}
+    raw_token = data.get("token")
+    new_password = data.get("password")
+
+    message, status = _GENERIC_RESET_PASSWORD_ERROR
+    generic_error = jsonify({"error": message}), status
+
+    if not isinstance(raw_token, str) or not raw_token:
+        return generic_error
+
+    # Same password rules as registration (validate_password is shared -
+    # see validators.py), checked before touching the token/database so
+    # an invalid new password never partially consumes a valid token.
+    password_errors = validate_password(new_password)
+    if password_errors:
+        return jsonify({"error": "Invalid password", "details": password_errors}), 400
+
+    token_hash_value = hash_token(raw_token)
+    token_row = PasswordResetToken.query.filter_by(token_hash=token_hash_value).first()
+
+    if token_row is None or not token_row.is_valid():
+        return generic_error
+
+    now = datetime.now(timezone.utc)
+
+    # ATOMIC single-use consumption: a conditional UPDATE that only
+    # succeeds if used_at is STILL NULL at the moment it runs, checked
+    # via the affected-row count - not a separate "read, then later
+    # write" pair of steps, which would leave a window for two
+    # concurrent requests for the same token to both pass the earlier
+    # is_valid() check before either one marks it used.
+    rows_updated = PasswordResetToken.query.filter_by(
+        id=token_row.id, used_at=None,
+    ).update({"used_at": now})
+
+    if rows_updated != 1:
+        # Someone else (or an earlier, already-completed request) won
+        # this token in the meantime.
+        db.session.rollback()
+        return generic_error
+
+    user = User.query.filter_by(id=token_row.user_id).first()
+    if user is None:
+        # Should not happen given the FK constraint, but never trust a
+        # lookup blindly - roll back the token consumption too, rather
+        # than leaving it consumed with no password actually changed.
+        db.session.rollback()
+        return generic_error
+
+    user.password_hash = hash_password(new_password)
+    user.updated_at = datetime.now(timezone.utc)
+    db.session.add(user)
+
+    # MANDATORY per the Phase 6 brief: revoke every existing session for
+    # this user, not just "the current one" (reset-password never had a
+    # session to begin with - it doesn't authenticate the caller).
+    UserSession.query.filter_by(user_id=user.id, revoked_at=None).update({"revoked_at": now})
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Your password has been reset. Please log in with your new password."
+    }), 200

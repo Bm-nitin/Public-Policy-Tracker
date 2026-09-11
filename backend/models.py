@@ -142,3 +142,38 @@ class UserSession(db.Model):
     def __repr__(self):
         # Never include session_token_hash in repr/logs.
         return f"<UserSession id={self.id} user_id={self.user_id}>"
+
+
+class PasswordResetToken(db.Model):
+    """Phase 6. Same pattern as EmailVerificationToken (Phase 4) and
+    UserSession (Phase 5): only a SHA-256 hash of the raw token is ever
+    stored - see verification_tokens.generate_password_reset_token().
+
+    used_at does double duty as both "this token was successfully used to
+    reset a password" and "this token was superseded by a newer request
+    before it was ever used" - the same established convention
+    resend_verification() already uses for EmailVerificationToken in
+    Phase 4, kept consistent here rather than adding a separate
+    invalidated_at column for a distinction the application never needs
+    to act on differently (either way, the token must never work again).
+    """
+
+    __tablename__ = "password_reset_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False, index=True)
+    token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    def is_valid(self, now=None):
+        now = now or _utcnow()
+        if self.used_at is not None:
+            return False
+        expires_at = ensure_aware_utc(self.expires_at)
+        return expires_at is not None and expires_at > now
+
+    def __repr__(self):
+        # Never include token_hash in repr/logs.
+        return f"<PasswordResetToken id={self.id} user_id={self.user_id}>"

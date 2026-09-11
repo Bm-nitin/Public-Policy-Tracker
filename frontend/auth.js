@@ -106,3 +106,90 @@ async function logout() {
     window.location.href = "login.html";
   }
 }
+
+/* FORGOT PASSWORD (Phase 6) - forgot-password.html */
+async function forgotPassword() {
+  const emailField = document.getElementById("forgotEmail");
+  const statusEl = document.getElementById("forgotStatus");
+  if (!emailField || !statusEl) return; // only present on forgot-password.html
+
+  const email = emailField.value;
+  if (!email) {
+    statusEl.textContent = "Please enter your email.";
+    return;
+  }
+
+  statusEl.textContent = "Sending...";
+  try {
+    const response = await fetch(`${AUTH_API_BASE}/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email }),
+    });
+    const data = await response.json();
+    // The backend deliberately returns the SAME generic message whether
+    // or not the account exists - shown to the user as-is, not
+    // reinterpreted or supplemented with any "does this account exist"
+    // logic on the frontend.
+    statusEl.textContent = data.message || "If an account with that email exists, a password reset link has been sent.";
+  } catch (err) {
+    statusEl.textContent = "Could not reach the server. Please try again.";
+  }
+}
+
+/* RESET PASSWORD (Phase 6) - reset-password.html
+ * The raw token travels only in the URL (the credential the user was
+ * emailed) - it is read once here and never written to localStorage or
+ * sessionStorage. After a successful reset it's cleared from the visible
+ * address bar via history.replaceState (a usability/hygiene measure only
+ * - the real security controls are server-side expiry, hashing, and
+ * single-use enforcement, not hiding the URL). */
+async function resetPassword() {
+  const newPasswordField = document.getElementById("newPassword");
+  const confirmPasswordField = document.getElementById("confirmPassword");
+  const statusEl = document.getElementById("resetStatus");
+  if (!newPasswordField || !statusEl) return; // only present on reset-password.html
+
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  if (!token) {
+    statusEl.textContent = "This reset link is missing its token. Please request a new one.";
+    return;
+  }
+
+  const newPassword = newPasswordField.value;
+  const confirmPassword = confirmPasswordField.value;
+  if (!newPassword || newPassword !== confirmPassword) {
+    statusEl.textContent = "Passwords do not match.";
+    return;
+  }
+
+  statusEl.textContent = "Resetting...";
+  try {
+    const response = await fetch(`${AUTH_API_BASE}/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ token, password: newPassword }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      const detail = (data.details && data.details.join(", ")) || data.error || "Reset failed";
+      statusEl.textContent = detail;
+      return;
+    }
+
+    // Strip the token from the visible URL now that it's been used -
+    // hygiene only, not a security boundary (see function docstring).
+    history.replaceState(null, "", window.location.pathname);
+
+    statusEl.textContent = (data.message || "Password reset successful.") + " Redirecting to login...";
+    // Reset never auto-authenticates (per the backend) - send the user
+    // to the normal login page rather than pretending they're signed in.
+    setTimeout(() => { window.location.href = "login.html"; }, 2000);
+  } catch (err) {
+    statusEl.textContent = "Could not reach the server. Please try again.";
+  }
+}

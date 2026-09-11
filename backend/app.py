@@ -7,6 +7,7 @@ from chatbot import get_response
 from policy_loader import load_policies
 import traceback
 app = Flask(__name__)
+app.secret_key = Config.SECRET_KEY
 
 # Non-fatal startup checks (e.g. missing Gemini key, unrestricted CORS,
 # unconfigured database). Logs warnings only - never blocks the app from
@@ -14,8 +15,15 @@ app = Flask(__name__)
 Config.validate()
 
 # Allow frontend requests. Defaults to "*" (same as before) unless
-# CORS_ORIGINS is set in .env.
-CORS(app, resources={r"/*": {"origins": Config.CORS_ORIGINS}})
+# CORS_ORIGINS is set in .env. supports_credentials is only enabled when
+# a specific origin is configured - browsers forbid combining a wildcard
+# origin with credentialed requests (the login/logout/me cookie), so
+# leaving CORS_ORIGINS="*" simply means cross-origin login won't work
+# until a real origin is set (Config.validate() warns about this).
+_cors_kwargs = {"origins": Config.CORS_ORIGINS}
+if Config.CORS_ORIGINS != "*":
+    _cors_kwargs["supports_credentials"] = True
+CORS(app, resources={r"/*": _cors_kwargs})
 
 # Database (Phase 2 foundation). Only wired up when DATABASE_URL is
 # actually set, so the app keeps importing and every pre-Phase-3 route

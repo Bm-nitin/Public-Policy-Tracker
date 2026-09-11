@@ -3,8 +3,22 @@ let isLoading = false;
 
 // Run after page loads
 window.onload = function () {
-    let user = localStorage.getItem("loggedInUser");
-    document.getElementById("username").innerText = user || "Guest";
+    // Phase 5: the backend session (HttpOnly cookie) is now the only
+    // source of truth for who's logged in - this used to read a
+    // plaintext localStorage flag that any page script could set,
+    // which wasn't real authentication. credentials: "include" sends
+    // the session cookie (if any) to the backend for a real check.
+    fetch("https://policy-tracker-b8a3.onrender.com/api/auth/me", {
+        credentials: "include",
+    })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+            const name = data && data.user ? data.user.name : "Guest";
+            document.getElementById("username").innerText = name;
+        })
+        .catch(() => {
+            document.getElementById("username").innerText = "Guest";
+        });
 
     let input = document.getElementById("userInput");
     if (input) {
@@ -95,8 +109,12 @@ function goToReferences() {
 }
 
 function logout() {
-    localStorage.removeItem("loggedInUser");
-    window.location.href = "login.html";
+    fetch("https://policy-tracker-b8a3.onrender.com/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+    }).finally(() => {
+        window.location.href = "login.html";
+    });
 }
 
 function goHome() {

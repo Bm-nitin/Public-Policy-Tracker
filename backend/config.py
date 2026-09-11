@@ -14,6 +14,7 @@ file existed - nothing changes unless a new variable is set in .env.
 """
 
 import os
+import secrets
 
 from dotenv import load_dotenv
 
@@ -83,6 +84,36 @@ class Config:
     # Deliberately not defaulted to localhost/Render - see backend/email_service.py.
     FRONTEND_URL = os.getenv("FRONTEND_URL")
 
+    # --- Sessions / Auth (Phase 5) ---
+    # Our actual login-session security does NOT depend on SECRET_KEY -
+    # see backend/sessions.py, which uses its own high-entropy random
+    # token + server-side hash lookup (same pattern as email verification
+    # tokens), independently revocable via the database. SECRET_KEY is
+    # still set on the Flask app (app.secret_key) for compatibility with
+    # Flask's own session/flash/CSRF-adjacent utilities, per the Phase 5
+    # brief. If unset, a random ephemeral key is generated for THIS
+    # PROCESS ONLY - never a predictable/hardcoded default - but see the
+    # validate() warning below for why that's not suitable for a
+    # multi-worker or production deployment.
+    _env_secret_key = os.getenv("SECRET_KEY")
+    SECRET_KEY = _env_secret_key or secrets.token_hex(32)
+    SECRET_KEY_WAS_GENERATED = not bool(_env_secret_key)
+
+    SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "ppt_session")
+    SESSION_LIFETIME_HOURS = int(os.getenv("SESSION_LIFETIME_HOURS", 24 * 7))  # 7 days
+
+    # Defaults are chosen for THIS app's actual deployment shape
+    # (frontend and backend on different domains - see
+    # CURRENT_ARCHITECTURE.md): a cross-site fetch() with credentials
+    # only carries a cookie set with SameSite=None, and SameSite=None
+    # requires Secure=True (browsers reject the combination otherwise).
+    # For local plain-HTTP development where frontend and backend share
+    # an origin/site, override both together in .env:
+    #   SESSION_COOKIE_SAMESITE=Lax
+    #   SESSION_COOKIE_SECURE=false
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true").strip().lower() not in ("false", "0", "no")
+    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "None")
+
     @classmethod
     def validate(cls):
         """Non-fatal startup checks. Logs actionable warnings but never
@@ -132,6 +163,40 @@ class Config:
                 "built. Set FRONTEND_URL in .env (e.g. "
                 "https://your-frontend.example) before relying on email "
                 "verification."
+            )
+
+        if cls.SECRET_KEY_WAS_GENERATED:
+            warnings.append(
+                "SECRET_KEY is not set - using a random ephemeral key "
+                "generated for this process only (never a predictable "
+                "default). This does NOT weaken login-session security "
+                "(see backend/sessions.py - that's independently backed "
+                "by the database), but it does mean the key differs "
+                "across restarts and across separate worker processes "
+                "(e.g. multiple gunicorn workers), which can affect "
+                "Flask-native session/flash features. Set a persistent "
+                "SECRET_KEY in .env before running more than one worker "
+                "or in production."
+            )
+
+        if cls.SESSION_COOKIE_SAMESITE.lower() == "none" and not cls.SESSION_COOKIE_SECURE:
+            warnings.append(
+                "SESSION_COOKIE_SAMESITE=None requires SESSION_COOKIE_SECURE=true "
+                "(browsers reject SameSite=None cookies without Secure) - "
+                "the login cookie will silently fail to be set as configured. "
+                "Either set SESSION_COOKIE_SECURE=true (recommended, requires "
+                "HTTPS) or set SESSION_COOKIE_SAMESITE=Lax for same-site/local "
+                "HTTP development."
+            )
+
+        if cls.CORS_ORIGINS == "*":
+            warnings.append(
+                "Because CORS_ORIGINS is '*', credentialed requests (the "
+                "login/logout/me endpoints, which rely on cookies) will "
+                "NOT enable CORS credentials support - browsers forbid "
+                "combining a wildcard origin with credentials. Cross-origin "
+                "login will not work until CORS_ORIGINS is set to your "
+                "actual frontend origin(s)."
             )
 
         for warning in warnings:

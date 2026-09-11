@@ -104,3 +104,41 @@ class EmailVerificationToken(db.Model):
         # Never include token_hash in repr/logs - it's a hash, not the
         # secret itself, but there's no reason to print it either.
         return f"<EmailVerificationToken id={self.id} user_id={self.user_id}>"
+
+
+class UserSession(db.Model):
+    """Phase 5. A genuine server-side session: the row here is the
+    authoritative source of truth for whether a session is valid, and is
+    independently revocable (logout just sets revoked_at) - unlike a
+    Flask signed-cookie session, which is client-held and can only be
+    invalidated by rotating the app's secret for everyone at once.
+
+    Same pattern as EmailVerificationToken (see backend/sessions.py for
+    generation/hashing): only session_token_hash is ever stored, never
+    the raw token - the raw token exists only in the HttpOnly cookie on
+    the client.
+    """
+
+    __tablename__ = "user_sessions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False, index=True)
+    session_token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    revoked_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    def is_valid(self, now=None):
+        """Same shape as EmailVerificationToken.is_valid() - see that
+        docstring for why expires_at is normalized via ensure_aware_utc()
+        before comparing (SQLite round-trips timezone-aware columns as
+        naive)."""
+        now = now or _utcnow()
+        if self.revoked_at is not None:
+            return False
+        expires_at = ensure_aware_utc(self.expires_at)
+        return expires_at is not None and expires_at > now
+
+    def __repr__(self):
+        # Never include session_token_hash in repr/logs.
+        return f"<UserSession id={self.id} user_id={self.user_id}>"

@@ -157,13 +157,28 @@ except ImportError:
             new_filters.update(kwargs)
             return _ShimQuery(self.model_cls, self.conn, new_filters)
 
+        def _where_clause(self):
+            """Builds a WHERE clause + bound params, treating a None
+            filter value as IS NULL rather than '= ?' - real SQLAlchemy's
+            filter_by(col=None) does the same (a bound '= NULL' parameter
+            would never match anything in standard SQL, including
+            SQLite/Postgres, since NULL = NULL is unknown, not true)."""
+            clauses, params = [], []
+            for key, value in self.filters.items():
+                if value is None:
+                    clauses.append(f"{key} IS NULL")
+                else:
+                    clauses.append(f"{key} = ?")
+                    params.append(value)
+            return (" AND ".join(clauses) or "1=1"), params
+
         def _execute(self):
             cols = list(self.model_cls.__columns__.keys())
-            where_sql = " AND ".join(f"{k} = ?" for k in self.filters) or "1=1"
+            where_sql, params = self._where_clause()
             cur = self.conn.execute(
                 f"SELECT {','.join(cols)} FROM {self.model_cls.__tablename__} "
                 f"WHERE {where_sql}",
-                list(self.filters.values()),
+                params,
             )
             rows = cur.fetchall()
             results = []
@@ -185,6 +200,37 @@ except ImportError:
 
         def all(self):
             return self._execute()
+
+        def update(self, values):
+            """Bulk conditional UPDATE, mirroring real SQLAlchemy's
+            Query.update({...}): executes an UPDATE ... WHERE <filters>
+            immediately (within the current sqlite3 transaction - not
+            committed here, same as real SQLAlchemy, which still needs an
+            explicit session.commit() afterward) and returns the number
+            of rows actually changed. This is what makes atomic
+            conditional consumption possible (see reset_password() in
+            auth_routes.py): filter_by(id=..., used_at=None).update(...)
+            only affects a row if used_at is STILL NULL at the moment the
+            UPDATE runs, closing the check-then-write race a separate
+            SELECT-then-UPDATE pair would leave open."""
+            cols = self.model_cls.__columns__
+            set_clauses, set_params = [], []
+            for key, value in values.items():
+                col = cols.get(key)
+                if col is not None and col.col_type.sql_type == "BOOL" and value is not None:
+                    value = 1 if value else 0
+                elif hasattr(value, "isoformat"):
+                    value = value.isoformat()
+                set_clauses.append(f"{key} = ?")
+                set_params.append(value)
+
+            where_sql, where_params = self._where_clause()
+            cur = self.conn.execute(
+                f"UPDATE {self.model_cls.__tablename__} SET {', '.join(set_clauses)} "
+                f"WHERE {where_sql}",
+                set_params + where_params,
+            )
+            return cur.rowcount
 
     class _ShimQueryDescriptor:
         def __get__(self, instance, owner):

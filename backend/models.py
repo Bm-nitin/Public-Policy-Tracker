@@ -177,3 +177,97 @@ class PasswordResetToken(db.Model):
     def __repr__(self):
         # Never include token_hash in repr/logs.
         return f"<PasswordResetToken id={self.id} user_id={self.user_id}>"
+
+
+class Policy(db.Model):
+    """Phase 7 (finalized schema, approved). Database-backed mirror of
+    the curated JSON dataset in data/*.json, loaded today by
+    backend/policy_loader.py.
+
+    Field names/types are taken directly from what the JSON actually
+    contains - every one of the 151 source records has exactly these 5
+    fields (name, category, sub_category, change, impact), verified by
+    inspecting all 15 files before writing this model. Fields suggested
+    in earlier drafts of the Phase 7 brief that do NOT exist in the
+    source data (description, eligibility, benefits, application_process,
+    documents_required, official_link) are deliberately NOT columns here
+    - adding them now would mean 151 permanently-NULL columns invented
+    ahead of any real data. Adding any of them later is a trivial,
+    low-risk nullable-column migration once real data for them exists.
+
+    (name, sector) is NOT globally unique on name alone: 8 real policy
+    names legitimately appear under two different sectors with distinct,
+    sector-specific category/change/impact text (e.g. "Make in India
+    Initiative, 2014" under both economy and industry_business) - these
+    are not duplicates, they're two different curated write-ups of the
+    same real-world policy. The natural identity is the (name, sector)
+    pair, which IS unique across all 151 current records (verified) and
+    is enforced here as a composite UNIQUE constraint.
+
+    source_file (approved schema change - replaces the earlier
+    source_json draft) stores the original JSON filename (e.g.
+    "agriculture.json") for provenance - where a given row came from -
+    rather than a full copy of the source record. The full record isn't
+    retained because there is no concrete, demonstrated case of
+    information loss: all 5 source keys map 1:1 to columns above, so a
+    raw-JSON safety-net column has no actual data to protect right now.
+    If a future JSON structure introduces new fields, that's a
+    deliberate, separate schema migration - not something a speculative
+    blob column should silently paper over.
+
+    This model is not wired into chatbot.py/policy_loader.py in this
+    phase - see backend/policy_service.py for the parallel DB-backed
+    loader, and Phase 9 for when retrieval actually switches over.
+    """
+
+    __tablename__ = "policies"
+    __table_args__ = (
+        db.UniqueConstraint("name", "sector", name="uq_policies_name_sector"),
+    )
+
+    id = db.Column(
+        # SQLite only treats a column as its autoincrementing rowid alias
+        # when it's declared literally as "INTEGER PRIMARY KEY" - a bare
+        # BigInteger primary key compiles to "BIGINT", which SQLite does
+        # NOT alias to rowid, so no autoincrement happens there and every
+        # insert fails with "NOT NULL constraint failed: policies.id".
+        # with_variant() is the standard SQLAlchemy fix: PostgreSQL still
+        # gets genuine BIGINT (the approved production type, unchanged),
+        # and only the sqlite dialect (used for local/test databases)
+        # gets Integer instead. This is a per-dialect DDL type choice,
+        # not a weakening of the production schema.
+        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        primary_key=True,
+    )
+    name = db.Column(db.String(255), nullable=False, index=True)
+    sector = db.Column(db.String(64), nullable=False, index=True)
+    category = db.Column(db.String(120), nullable=False, index=True)
+    sub_category = db.Column(db.String(120), nullable=False, index=True)
+    change = db.Column(db.Text, nullable=False)
+    impact = db.Column(db.Text, nullable=False)
+    source_file = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    def to_dict(self):
+        """Same key shape backend/policy_loader.py already produces
+        (name, category, sub_category, change, impact, sector) - so any
+        code written against the JSON loader's output (chatbot.py today)
+        would work unchanged against this, without needing to know or
+        care where the dict came from. Intentionally excludes id/
+        source_file/timestamps - chatbot.py's existing code never uses
+        them and this keeps the dict shape identical to the JSON
+        loader's, not a superset that could behave differently."""
+        return {
+            "name": self.name,
+            "category": self.category,
+            "sub_category": self.sub_category,
+            "change": self.change,
+            "impact": self.impact,
+            "sector": self.sector,
+        }
+
+    def __repr__(self):
+        return f"<Policy id={self.id} name={self.name!r} sector={self.sector!r}>"

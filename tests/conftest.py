@@ -243,6 +243,17 @@ except ImportError:
                 )
             return _ShimQuery(owner, db_instance._conn)
 
+    class _ShimUniqueConstraint:
+        """Minimal stand-in for sqlalchemy.UniqueConstraint, sufficient
+        for a composite UNIQUE(*columns) - used by Policy's (name,
+        sector) constraint (Phase 7). Genuinely enforced (see
+        create_all() below), not just accepted-and-ignored - Phase 7's
+        idempotent-import tests rely on the real database rejecting a
+        true duplicate (name, sector) pair."""
+        def __init__(self, *columns, name=None):
+            self.columns = columns
+            self.name = name
+
     class _ShimModelMeta(type):
         def __new__(mcs, name, bases, namespace):
             columns = {}
@@ -252,6 +263,7 @@ except ImportError:
                     columns[key] = value
             cls = super().__new__(mcs, name, bases, namespace)
             cls.__columns__ = columns
+            cls.__table_args_shim__ = namespace.get("__table_args__", ())
             if namespace.get("__tablename__"):
                 _MODEL_REGISTRY.append(cls)
             return cls
@@ -367,9 +379,12 @@ except ImportError:
             self.session = None
             self.Column = _ShimColumn
             self.Integer = _ShimColType("INTEGER")
+            self.BigInteger = _ShimColType("INTEGER")
             self.String = lambda length=None: _ShimColType("TEXT", length=length)
+            self.Text = _ShimColType("TEXT")
             self.Boolean = _ShimColType("BOOL")
             self.DateTime = lambda timezone=False: _ShimColType("DATETIME")
+            self.UniqueConstraint = _ShimUniqueConstraint
             self.Model = _make_model_base(self)
 
         def init_app(self, app):
@@ -399,8 +414,17 @@ except ImportError:
                         if col.unique:
                             parts.append("UNIQUE")
                     col_defs.append(" ".join(parts))
+
+                table_constraints = []
+                for arg in getattr(cls, "__table_args_shim__", ()):
+                    if isinstance(arg, _ShimUniqueConstraint):
+                        table_constraints.append(
+                            f"UNIQUE ({', '.join(arg.columns)})"
+                        )
+
                 self._conn.execute(
-                    f"CREATE TABLE IF NOT EXISTS {cls.__tablename__} ({', '.join(col_defs)})"
+                    f"CREATE TABLE IF NOT EXISTS {cls.__tablename__} "
+                    f"({', '.join(col_defs + table_constraints)})"
                 )
                 for col_name, col in cls.__columns__.items():
                     # A UNIQUE column already gets an implicit index from
@@ -421,6 +445,57 @@ except ImportError:
 
     _fake_flask_sqlalchemy.SQLAlchemy = _OfflineFakeSQLAlchemy
     sys.modules["flask_sqlalchemy"] = _fake_flask_sqlalchemy
+
+
+# --- flask_migrate shim (only if the real package isn't installed) -------
+# IMPORTANT SCOPE: this genuinely exercises the actual mechanism that was
+# broken (Migrate.init_app() must call app.cli.add_command() so `flask db
+# ...` exists at all) using a real Click command group - it does NOT
+# simulate Alembic's actual upgrade/downgrade/revision logic, which
+# requires the real alembic + flask-migrate packages and a real database
+# and is never invoked by this shim or by any test. Its subcommands only
+# echo a notice; they do not touch migrations/env.py or any database.
+try:
+    import flask_migrate  # noqa: F401
+except ImportError:
+    import click as _click
+
+    _fake_flask_migrate = types.ModuleType("flask_migrate")
+
+    @_click.group(name="db", help="Perform database migrations (offline shim - see tests/conftest.py).")
+    def _shim_db_cli():
+        pass
+
+    for _cmd_name in ("init", "migrate", "revision", "upgrade", "downgrade",
+                      "current", "history", "heads", "stamp", "show", "check"):
+        def _make_cmd(name):
+            @_click.command(name=name)
+            def _cmd(*args, **kwargs):
+                _click.echo(
+                    f"(offline shim) 'flask db {name}' is not implemented here - "
+                    f"this only proves the command is registered. Run this for "
+                    f"real with flask-migrate installed and a real DATABASE_URL."
+                )
+            return _cmd
+        _shim_db_cli.add_command(_make_cmd(_cmd_name))
+
+    class _ShimMigrate:
+        def __init__(self, app=None, db=None, **kwargs):
+            self.db = db
+            if app is not None and db is not None:
+                self.init_app(app, db, **kwargs)
+
+        def init_app(self, app, db=None, directory="migrations", **kwargs):
+            self.db = db or self.db
+            app.extensions = getattr(app, "extensions", {})
+            app.extensions["migrate"] = self
+            # This is the actual line that was missing in the real bug:
+            # without it, `flask --app app db --help` has no "db" command
+            # at all, exactly the reported symptom.
+            app.cli.add_command(_shim_db_cli)
+
+    _fake_flask_migrate.Migrate = _ShimMigrate
+    sys.modules["flask_migrate"] = _fake_flask_migrate
 
 
 # --- argon2-cffi shim (only if the real package isn't installed) ---------

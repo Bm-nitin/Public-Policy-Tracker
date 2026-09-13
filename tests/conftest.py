@@ -123,7 +123,7 @@ except ImportError:
 
     class _ShimColType:
         def __init__(self, sql_type, length=None):
-            self.sql_type = sql_type  # "INTEGER" | "TEXT" | "BOOL"
+            self.sql_type = sql_type  # "INTEGER" | "BIGINT" | "TEXT" | "BOOL" | "DATETIME"
             self.length = length
 
         def __call__(self, *args, **kwargs):
@@ -132,13 +132,27 @@ except ImportError:
                 length = args[0]
             return _ShimColType(self.sql_type, length=length)
 
+        def with_variant(self, other_type, dialect_name):
+            """Mirrors real SQLAlchemy's Type.with_variant(): picks a
+            different type for a specific dialect. This shim's physical
+            backend is always sqlite, so a "sqlite" variant always
+            applies here - exactly what would genuinely happen against a
+            real sqlite connection too (this isn't a shim-only
+            simplification, it's the real, documented behavior)."""
+            if dialect_name == "sqlite":
+                return other_type
+            return self
+
     class _ShimColumn:
         def __init__(self, col_type, primary_key=False, unique=False,
                      nullable=True, default=None, onupdate=None, index=False):
             self.col_type = col_type
             self.primary_key = primary_key
             self.unique = unique
-            self.nullable = nullable
+            # A primary key is implicitly NOT NULL, same as real
+            # SQLAlchemy/PostgreSQL - not something the caller needs to
+            # (or usually does) specify explicitly.
+            self.nullable = False if primary_key else nullable
             self.default = default
             self.onupdate = onupdate
             self.index = index
@@ -147,15 +161,37 @@ except ImportError:
     _MODEL_REGISTRY = []
 
     class _ShimQuery:
-        def __init__(self, model_cls, conn, filters=None):
+        def __init__(self, model_cls, conn, filters=None,
+                     order_by_col=None, limit_n=None, offset_n=None):
             self.model_cls = model_cls
             self.conn = conn
             self.filters = dict(filters) if filters else {}
+            self.order_by_col = order_by_col
+            self.limit_n = limit_n
+            self.offset_n = offset_n
+
+        def _clone(self, **overrides):
+            kwargs = dict(
+                filters=self.filters, order_by_col=self.order_by_col,
+                limit_n=self.limit_n, offset_n=self.offset_n,
+            )
+            kwargs.update(overrides)
+            return _ShimQuery(self.model_cls, self.conn, **kwargs)
 
         def filter_by(self, **kwargs):
             new_filters = dict(self.filters)
             new_filters.update(kwargs)
-            return _ShimQuery(self.model_cls, self.conn, new_filters)
+            return self._clone(filters=new_filters)
+
+        def order_by(self, column):
+            col_name = getattr(column, "name", None) or str(column)
+            return self._clone(order_by_col=col_name)
+
+        def limit(self, n):
+            return self._clone(limit_n=n)
+
+        def offset(self, n):
+            return self._clone(offset_n=n)
 
         def _where_clause(self):
             """Builds a WHERE clause + bound params, treating a None
@@ -175,11 +211,17 @@ except ImportError:
         def _execute(self):
             cols = list(self.model_cls.__columns__.keys())
             where_sql, params = self._where_clause()
-            cur = self.conn.execute(
+            sql = (
                 f"SELECT {','.join(cols)} FROM {self.model_cls.__tablename__} "
-                f"WHERE {where_sql}",
-                params,
+                f"WHERE {where_sql}"
             )
+            if self.order_by_col:
+                sql += f" ORDER BY {self.order_by_col}"
+            if self.limit_n is not None:
+                sql += f" LIMIT {int(self.limit_n)}"
+                if self.offset_n is not None:
+                    sql += f" OFFSET {int(self.offset_n)}"
+            cur = self.conn.execute(sql, params)
             rows = cur.fetchall()
             results = []
             for row in rows:
@@ -200,6 +242,14 @@ except ImportError:
 
         def all(self):
             return self._execute()
+
+        def count(self):
+            where_sql, params = self._where_clause()
+            cur = self.conn.execute(
+                f"SELECT COUNT(*) FROM {self.model_cls.__tablename__} WHERE {where_sql}",
+                params,
+            )
+            return cur.fetchone()[0]
 
         def update(self, values):
             """Bulk conditional UPDATE, mirroring real SQLAlchemy's
@@ -254,6 +304,69 @@ except ImportError:
             self.columns = columns
             self.name = name
 
+    class _ShimTableColumnType:
+        """Minimal stand-in for a SQLAlchemy type object - just enough
+        that str(column.type) gives a recognizable name, matching what
+        real introspection code (e.g. `str(c.type)`) expects."""
+        _DISPLAY_NAMES = {
+            "INTEGER": "INTEGER", "BIGINT": "BIGINT", "BOOL": "BOOLEAN",
+            "DATETIME": "DATETIME",
+        }
+
+        def __init__(self, sql_type, length=None):
+            self.sql_type = sql_type
+            self.length = length
+
+        def __str__(self):
+            if self.sql_type == "TEXT":
+                return f"VARCHAR({self.length})" if self.length else "TEXT"
+            return self._DISPLAY_NAMES.get(self.sql_type, self.sql_type)
+
+    class _ShimTableColumn:
+        """Minimal stand-in for a real SQLAlchemy Column as exposed via
+        Model.__table__.columns - name/type/nullable/index, the exact
+        surface real introspection scripts read."""
+        def __init__(self, shim_column):
+            self.name = shim_column.name
+            self.nullable = shim_column.nullable
+            self.index = bool(shim_column.index)
+            self.type = _ShimTableColumnType(
+                shim_column.col_type.sql_type, shim_column.col_type.length
+            )
+
+    class _ShimColumnCollection(list):
+        """Minimal stand-in for SQLAlchemy's ColumnCollection. A plain
+        list's `in`/`[]` only work by object identity/equality, so
+        `"source_file" in [...]` would silently always be False (a
+        string never equals a column object) regardless of whether the
+        column actually exists - which would make a real check like
+        `"source_json" not in Policy.__table__.columns` trivially true
+        for the wrong reason. This collection checks/indexes by column
+        NAME when given a string, matching real SQLAlchemy's actual
+        `col_name in table.columns` / `table.columns[col_name]` usage."""
+
+        def __contains__(self, item):
+            if isinstance(item, str):
+                return any(col.name == item for col in self)
+            return super().__contains__(item)
+
+        def __getitem__(self, key):
+            if isinstance(key, str):
+                for col in self:
+                    if col.name == key:
+                        return col
+                raise KeyError(key)
+            return super().__getitem__(key)
+
+        def keys(self):
+            return [col.name for col in self]
+
+    class _ShimTable:
+        def __init__(self, shim_columns_dict):
+            self.columns = _ShimColumnCollection(
+                _ShimTableColumn(col) for col in shim_columns_dict.values()
+            )
+
     class _ShimModelMeta(type):
         def __new__(mcs, name, bases, namespace):
             columns = {}
@@ -265,6 +378,7 @@ except ImportError:
             cls.__columns__ = columns
             cls.__table_args_shim__ = namespace.get("__table_args__", ())
             if namespace.get("__tablename__"):
+                cls.__table__ = _ShimTable(columns)
                 _MODEL_REGISTRY.append(cls)
             return cls
 
@@ -379,7 +493,7 @@ except ImportError:
             self.session = None
             self.Column = _ShimColumn
             self.Integer = _ShimColType("INTEGER")
-            self.BigInteger = _ShimColType("INTEGER")
+            self.BigInteger = _ShimColType("BIGINT")
             self.String = lambda length=None: _ShimColType("TEXT", length=length)
             self.Text = _ShimColType("TEXT")
             self.Boolean = _ShimColType("BOOL")
@@ -402,7 +516,7 @@ except ImportError:
                 col_defs = []
                 for col_name, col in cls.__columns__.items():
                     sql_type = {
-                        "INTEGER": "INTEGER", "TEXT": "TEXT", "BOOL": "INTEGER",
+                        "INTEGER": "INTEGER", "BIGINT": "INTEGER", "TEXT": "TEXT", "BOOL": "INTEGER",
                         "DATETIME": "TEXT",
                     }[col.col_type.sql_type]
                     parts = [col_name, sql_type]
@@ -608,6 +722,38 @@ def app_client(flask_app_module):
 
 
 @pytest.fixture
+def no_db_client(flask_app_module, monkeypatch):
+    """Test client for exercising the "no database configured" guard
+    specifically - genuinely isolated from whatever the real .env
+    actually contains, rather than relying on the developer's local
+    environment happening to have DATABASE_URL unset (which is no longer
+    a safe assumption once a real DATABASE_URL is configured for
+    Phase 7+ work).
+
+    Reuses the same shared app object app_client does (there's no
+    create_app() factory in this codebase to build a fresh app per test
+    - see backend/app.py), but forces config.Config.DATABASE_URL to None
+    for the duration of the test via monkeypatch, which auto-reverts
+    after the test regardless of pass/fail. This works because every
+    route's "is a database configured at all" guard
+    (`if not Config.DATABASE_URL: return ..., 503`) reads Config.DATABASE_URL
+    fresh at request time - it is never cached or baked into the Flask
+    app object at creation/import time - so patching the Config class
+    attribute is sufficient on its own; no new Flask app, no re-running
+    init_db(), no blueprint re-registration needed.
+
+    Do NOT use this fixture for anything except a route's explicit
+    "database not configured" guard test - every other test should keep
+    using app_client (real .env) or db_test_app/registration_client/etc.
+    (isolated in-memory test database) as appropriate, per the Phase 8.5
+    fix's explicit requirement that normal tests remain unchanged."""
+    import config
+    monkeypatch.setattr(config.Config, "DATABASE_URL", None)
+    with flask_app_module.app.test_client() as client:
+        yield client
+
+
+@pytest.fixture
 def reset_policy_cache(policy_loader_module):
     """Ensure load_policies() re-reads from disk instead of returning the
     module-level cache. Restores the real cached data afterwards so later
@@ -696,6 +842,34 @@ def registration_client(db_test_app, monkeypatch):
     monkeypatch.setattr(config.Config, "DATABASE_URL", "sqlite:///:memory:")
     monkeypatch.setattr(config.Config, "FRONTEND_URL", "https://test.example")
     db_test_app.register_blueprint(auth_bp)
+
+    with db_test_app.test_client() as client:
+        yield client
+
+
+@pytest.fixture
+def policies_client(db_test_app, monkeypatch):
+    """Test client for GET /api/policies* (Phase 8), wired to
+    db_test_app's isolated database and pre-populated with the REAL
+    151-record dataset via the actual import pipeline
+    (import_policies_from_json against the real data/ directory) - not
+    synthetic test fixtures, so these tests exercise the real data shape
+    end to end."""
+    import os
+
+    import config
+    from import_policies import import_policies_from_json
+    from policies_routes import policies_bp
+
+    monkeypatch.setattr(config.Config, "DATABASE_URL", "sqlite:///:memory:")
+    db_test_app.register_blueprint(policies_bp)
+
+    real_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"
+    )
+    with db_test_app.app_context():
+        report = import_policies_from_json(real_data_dir)
+        assert report["aborted"] is False
 
     with db_test_app.test_client() as client:
         yield client

@@ -290,14 +290,17 @@ def test_session_cookie_value_is_opaque_not_user_data(
 
 # --- database-not-configured -------------------------------------------------
 
-def test_login_without_database_configured_returns_503(app_client):
-    response = app_client.post("/api/auth/login", json={"email": "a@b.com", "password": "x"})
+def test_login_without_database_configured_returns_503(no_db_client):
+    response = no_db_client.post("/api/auth/login", json={"email": "a@b.com", "password": "x"})
     assert response.status_code == 503
 
 
-def test_me_without_database_configured_returns_401_or_503(app_client):
-    # No database means get_current_user() can't look anything up - a
-    # 401 (no valid session) is also an acceptable, safe outcome here
-    # since there's no cookie at all in this request either way.
-    response = app_client.get("/api/auth/me")
-    assert response.status_code in (401, 503)
+def test_me_without_database_configured_returns_401(no_db_client):
+    """Deterministic now that no_db_client genuinely forces
+    DATABASE_URL unset (previously this only worked by coincidence
+    against whatever the real .env happened to contain): get_current_user()
+    checks Config.DATABASE_URL first, before ever looking at a cookie, so
+    login_required's 401 fires reliably here - no more lenient
+    "401 or 503" needed."""
+    response = no_db_client.get("/api/auth/me")
+    assert response.status_code == 401

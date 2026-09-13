@@ -687,11 +687,11 @@ def test_replayed_token_after_successful_reset_is_rejected(
 
 # --- no database configured -------------------------------------------------------
 
-def test_forgot_password_without_database_configured_returns_503(app_client):
-    response = app_client.post("/api/auth/forgot-password", json={"email": "a@b.com"})
+def test_forgot_password_without_database_configured_returns_503(no_db_client):
+    response = no_db_client.post("/api/auth/forgot-password", json={"email": "a@b.com"})
     assert response.status_code == 503
 
 
-def test_reset_password_without_database_configured_returns_503(app_client):
-    response = app_client.post("/api/auth/reset-password", json={"token": "x", "password": "somepassword123"})
+def test_reset_password_without_database_configured_returns_503(no_db_client):
+    response = no_db_client.post("/api/auth/reset-password", json={"token": "x", "password": "somepassword123"})
     assert response.status_code == 503

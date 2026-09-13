@@ -350,13 +350,13 @@ def test_resend_verification_for_already_verified_user_returns_generic_response(
 
 # --- verify-email without database configured -------------------------------
 
-def test_verify_email_without_database_configured_returns_503(app_client):
-    response = app_client.get("/api/auth/verify-email?token=anything")
+def test_verify_email_without_database_configured_returns_503(no_db_client):
+    response = no_db_client.get("/api/auth/verify-email?token=anything")
     assert response.status_code == 503
 
 
-def test_resend_verification_without_database_configured_returns_503(app_client):
-    response = app_client.post("/api/auth/resend-verification", json={"email": "a@b.com"})
+def test_resend_verification_without_database_configured_returns_503(no_db_client):
+    response = no_db_client.post("/api/auth/resend-verification", json={"email": "a@b.com"})
     assert response.status_code == 503
 
 

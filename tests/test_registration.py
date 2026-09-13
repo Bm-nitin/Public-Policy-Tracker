@@ -248,11 +248,15 @@ def test_registration_response_contains_no_session_or_token_fields(
 
 # --- no database configured -------------------------------------------------
 
-def test_registration_without_database_configured_returns_503(app_client):
-    """app_client (see conftest.py) uses the real app.py with this repo's
-    actual .env, which does not set DATABASE_URL - so this exercises the
-    real "no database configured" guard in auth_routes.py, not a mock."""
-    response = app_client.post(
+def test_registration_without_database_configured_returns_503(no_db_client):
+    """Uses no_db_client (see conftest.py), which forces
+    Config.DATABASE_URL to None for this test only, via monkeypatch -
+    genuinely isolated from whatever the real .env actually contains.
+    This test previously relied on the real .env happening to have no
+    DATABASE_URL set, which stopped being true once Phase 7 configured a
+    real PostgreSQL connection there - that's exactly the bug this
+    fixture exists to prevent from recurring."""
+    response = no_db_client.post(
         "/api/auth/register",
         json={"name": "A", "email": "a@example.com", "password": "password123"},
     )

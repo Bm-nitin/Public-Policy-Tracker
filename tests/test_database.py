@@ -46,13 +46,16 @@ def test_config_database_url_defaults_to_none_when_unset(chatbot_module):
     assert hasattr(config.Config, "DATABASE_URL")
 
 
-def test_app_is_importable_and_routes_work_without_database_url(app_client):
-    """Reuses the standard app_client fixture (Phase 0.5), which boots the
-    real app.py. This repo's .env does not set DATABASE_URL, so this
-    exercises exactly the "no database configured" path required by
-    Phase 2. If this test passes, the existing 91 Phase 0.5/1 tests -
-    which all depend on the same app import succeeding - remain valid."""
-    response = app_client.get("/health")
+def test_app_is_importable_and_routes_work_without_database_url(no_db_client):
+    """Uses no_db_client (see conftest.py), which forces
+    Config.DATABASE_URL to None for this test only, rather than relying
+    on the real .env happening to have no DATABASE_URL set - that
+    assumption stopped holding once Phase 7 configured a real PostgreSQL
+    connection there. Exercises exactly the "no database configured"
+    path required by Phase 2. If this test passes, the existing
+    Phase 0.5/1 tests - which all depend on the same app import
+    succeeding - remain valid."""
+    response = no_db_client.get("/health")
     assert response.status_code == 200
     assert response.get_json() == {"status": "ok"}
 

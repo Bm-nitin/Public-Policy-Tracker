@@ -4,6 +4,7 @@ import click
 from config import Config
 from database import init_db
 from auth_routes import auth_bp
+from policies_routes import policies_bp
 from chatbot import get_response
 from policy_loader import load_policies
 import traceback
@@ -37,6 +38,13 @@ if Config.DATABASE_URL:
 # registering it here is safe even when no database is configured - the
 # route will just return a 503 for that one endpoint.
 app.register_blueprint(auth_bp)
+
+# Phase 8: read-only, database-backed Policy API (GET /api/policies*).
+# Same guard pattern as auth_bp - the blueprint's own routes check
+# Config.DATABASE_URL before touching the database, so registering it
+# here is safe even when no database is configured. Does not touch or
+# replace the existing GET /policies (JSON-backed) route below.
+app.register_blueprint(policies_bp)
 
 
 # Health check

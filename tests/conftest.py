@@ -78,6 +78,31 @@ except ImportError:
     sys.modules["google.genai"] = _fake_genai
 
 
+# --- shared expression helpers (used by both shims below) ----------------
+# Minimal stand-in for a real SQLAlchemy ColumnOperators expression (e.g.
+# what Policy.name.ilike(...) actually returns) - a parameterized SQL
+# fragment plus its bound value(s), combinable via OR. sqlite has no
+# ILIKE, so column.ilike(pattern) (see _ShimColumn below) compiles to
+# LOWER(col) LIKE LOWER(?) - a portable, correct case-insensitive
+# substring match, genuinely parameterized (the pattern is always a bound
+# parameter, never string-interpolated into the SQL fragment itself).
+class _ShimBinaryExpression:
+    def __init__(self, sql, params):
+        self.sql = sql
+        self.params = list(params)
+
+
+def _shim_or(*expressions):
+    expressions = [e for e in expressions if e is not None]
+    if not expressions:
+        return _ShimBinaryExpression("1=0", [])
+    combined_sql = " OR ".join(f"({e.sql})" for e in expressions)
+    combined_params = []
+    for e in expressions:
+        combined_params.extend(e.params)
+    return _ShimBinaryExpression(combined_sql, combined_params)
+
+
 # --- sqlalchemy shim (only if the real package isn't installed) ---------
 # Only the one thing auth_routes.py imports directly: the IntegrityError
 # exception class. Defined first so the flask_sqlalchemy shim below can
@@ -95,6 +120,9 @@ except ImportError:
 
     _fake_sqlalchemy_exc.IntegrityError = _ShimIntegrityError
     _fake_sqlalchemy.exc = _fake_sqlalchemy_exc
+    # Phase 9: backend/retrieval.py uses `from sqlalchemy import or_` to
+    # combine multiple ilike() conditions into one parameterized query.
+    _fake_sqlalchemy.or_ = _shim_or
     sys.modules["sqlalchemy"] = _fake_sqlalchemy
     sys.modules["sqlalchemy.exc"] = _fake_sqlalchemy_exc
 
@@ -158,22 +186,31 @@ except ImportError:
             self.index = index
             self.name = None
 
+        def ilike(self, pattern):
+            """Real SQLAlchemy: Policy.name.ilike('%token%') - a
+            case-insensitive substring match, parameterized (the pattern
+            is bound, never interpolated into the SQL string itself)."""
+            return _ShimBinaryExpression(f"LOWER({self.name}) LIKE LOWER(?)", [pattern])
+
     _MODEL_REGISTRY = []
 
     class _ShimQuery:
         def __init__(self, model_cls, conn, filters=None,
-                     order_by_col=None, limit_n=None, offset_n=None):
+                     order_by_col=None, limit_n=None, offset_n=None,
+                     raw_filter=None):
             self.model_cls = model_cls
             self.conn = conn
             self.filters = dict(filters) if filters else {}
             self.order_by_col = order_by_col
             self.limit_n = limit_n
             self.offset_n = offset_n
+            self.raw_filter = raw_filter
 
         def _clone(self, **overrides):
             kwargs = dict(
                 filters=self.filters, order_by_col=self.order_by_col,
                 limit_n=self.limit_n, offset_n=self.offset_n,
+                raw_filter=self.raw_filter,
             )
             kwargs.update(overrides)
             return _ShimQuery(self.model_cls, self.conn, **kwargs)
@@ -182,6 +219,22 @@ except ImportError:
             new_filters = dict(self.filters)
             new_filters.update(kwargs)
             return self._clone(filters=new_filters)
+
+        def filter(self, expression):
+            """Real SQLAlchemy: Query.filter(<expression>) - accepts a
+            compound expression (e.g. or_(Policy.name.ilike(...), ...)),
+            combined with any existing .filter_by() equality filters via
+            AND. Used by backend/retrieval.py's candidate query, which
+            needs an OR across several columns - something .filter_by()
+            alone (AND-only equality) can't express."""
+            if self.raw_filter is not None:
+                combined = _ShimBinaryExpression(
+                    f"({self.raw_filter.sql}) AND ({expression.sql})",
+                    self.raw_filter.params + expression.params,
+                )
+            else:
+                combined = expression
+            return self._clone(raw_filter=combined)
 
         def order_by(self, column):
             col_name = getattr(column, "name", None) or str(column)
@@ -198,7 +251,9 @@ except ImportError:
             filter value as IS NULL rather than '= ?' - real SQLAlchemy's
             filter_by(col=None) does the same (a bound '= NULL' parameter
             would never match anything in standard SQL, including
-            SQLite/Postgres, since NULL = NULL is unknown, not true)."""
+            SQLite/Postgres, since NULL = NULL is unknown, not true).
+            Combines equality filters (.filter_by()) with any compound
+            expression (.filter()) via AND."""
             clauses, params = [], []
             for key, value in self.filters.items():
                 if value is None:
@@ -206,6 +261,9 @@ except ImportError:
                 else:
                     clauses.append(f"{key} = ?")
                     params.append(value)
+            if self.raw_filter is not None:
+                clauses.append(f"({self.raw_filter.sql})")
+                params.extend(self.raw_filter.params)
             return (" AND ".join(clauses) or "1=1"), params
 
         def _execute(self):
@@ -873,6 +931,26 @@ def policies_client(db_test_app, monkeypatch):
 
     with db_test_app.test_client() as client:
         yield client
+
+
+@pytest.fixture
+def populated_db_app(db_test_app):
+    """db_test_app pre-populated with the REAL 151-record dataset via the
+    actual import pipeline - used by Phase 9 retrieval tests that call
+    backend/retrieval.py's functions directly (not through HTTP), so they
+    need an app context to query through but not a Flask test client."""
+    import os
+
+    from import_policies import import_policies_from_json
+
+    real_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"
+    )
+    with db_test_app.app_context():
+        report = import_policies_from_json(real_data_dir)
+        assert report["aborted"] is False
+
+    return db_test_app
 
 
 class _MockEmailRecorder(list):

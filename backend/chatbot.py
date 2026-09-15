@@ -342,7 +342,39 @@ def get_response(user_input):
 
 
     # --------------------------------------------------
-    # 5. GEMINI FALLBACK
+    # 5. RETRIEVAL V2 (Phase 9) - deterministic, DB-backed
+    # --------------------------------------------------
+    # Tried only when a database is actually configured - matches this
+    # app's established graceful-degradation pattern (see Config.validate()
+    # and every other DB-backed route). If DATABASE_URL is unset, or
+    # Retrieval V2 finds nothing, behavior falls through to the existing
+    # Gemini fallback exactly as it did before this phase - this is why
+    # every Phase 0.5 characterization test for get_response() still
+    # passes unmodified: none of them configure a database, so this
+    # block is always a no-op for them. Retrieval V2 itself never calls
+    # Gemini and never influences a Gemini prompt - it either has a
+    # confident deterministic answer or it doesn't.
+    if Config.DATABASE_URL:
+        try:
+            from retrieval import retrieve_policies
+            results = retrieve_policies(user_input)
+        except Exception:
+            # Never let a retrieval-layer problem take down /chat -
+            # degrade to the existing Gemini fallback, same as an
+            # unconfigured database. Logged server-side only (see
+            # CURRENT_ARCHITECTURE.md's note on this app's existing
+            # print-based error logging - not a new pattern).
+            print("[RETRIEVAL V2 ERROR] falling back to Gemini")
+            results = []
+
+        if results:
+            if len(results) == 1:
+                return format_response(results[0])
+            return format_multiple(results[:3], results[0]["sector"])
+
+
+    # --------------------------------------------------
+    # 6. GEMINI FALLBACK
     # --------------------------------------------------
 
     return call_generative_ai(user_input)

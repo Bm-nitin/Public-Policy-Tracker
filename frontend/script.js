@@ -2,24 +2,13 @@ const API_URL = "https://policy-tracker-b8a3.onrender.com/chat";
 let isLoading = false;
 
 // Run after page loads
+// NOTE (UI shell phase): the "who is logged in" fetch to /api/auth/me and
+// the logout() call used to live here. They have moved to shared/shared.js
+// because the account area (username + logout) is now part of the global
+// header shown on every page, not just index.html. The fetch itself,
+// endpoint, and credentials:"include" behavior are unchanged - only where
+// the code lives changed. Chat behavior below is untouched.
 window.onload = function () {
-    // Phase 5: the backend session (HttpOnly cookie) is now the only
-    // source of truth for who's logged in - this used to read a
-    // plaintext localStorage flag that any page script could set,
-    // which wasn't real authentication. credentials: "include" sends
-    // the session cookie (if any) to the backend for a real check.
-    fetch("https://policy-tracker-b8a3.onrender.com/api/auth/me", {
-        credentials: "include",
-    })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data) => {
-            const name = data && data.user ? data.user.name : "Guest";
-            document.getElementById("username").innerText = name;
-        })
-        .catch(() => {
-            document.getElementById("username").innerText = "Guest";
-        });
-
     let input = document.getElementById("userInput");
     if (input) {
         input.addEventListener("keypress", function(e) {
@@ -97,26 +86,4 @@ function sendCategory(category) {
 // Focus input
 function focusInput() {
     document.getElementById("userInput").focus();
-}
-
-// Navigation
-function goToContact() {
-    window.location.href = "contact.html";
-}
-
-function goToReferences() {
-    window.location.href = "reference.html";
-}
-
-function logout() {
-    fetch("https://policy-tracker-b8a3.onrender.com/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-    }).finally(() => {
-        window.location.href = "login.html";
-    });
-}
-
-function goHome() {
-    window.location.href = "index.html";
 }

@@ -5,15 +5,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy | Policy Tracker</title>
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme');
+                if (t !== 'light' && t !== 'dark') {
+                    t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+                }
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="shared/shared.css">
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body data-page="" data-header="full">
 
-    <nav class="navbar">
-        <div class="logo">Policy Tracker</div>
-        <button onclick="goHome()" class="nav-btn">Home</button>
-    </nav>
+    <div id="app-header"></div>
 
     <main class="legal-page">
         <div class="legal-container">
@@ -138,11 +149,9 @@
         </div>
     </main>
 
-    <script>
-        function goHome() {
-            window.location.href = "index.html";
-        }
-    </script>
+    <div id="app-footer"></div>
+
+    <script src="shared/shared.js"></script>
 
 </body>
 

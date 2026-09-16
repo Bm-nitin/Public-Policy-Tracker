@@ -1,65 +1,52 @@
-body {
-margin: 0;
-font-family: Arial, sans-serif;
-background: #0a0f1c;
-color: white;
-}
-
-/* MAIN */
-.container {
-max-width: 900px;
-margin: auto;
-padding: 50px;
-}
-
-/* TITLE */
-h1 {
-font-size: 40px;
-margin-bottom: 10px;
-}
+/* reference.css — page-specific layout for reference.html.
+   Relies on shared/shared.css for tokens, cards, header, footer. */
 
 .subtitle {
-color: #aaa;
-margin-bottom: 40px;
+  margin-bottom: var(--space-6);
+  font-size: 15px;
 }
 
-/* SECTIONS */
-.section {
-margin-bottom: 30px;
+.ref-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
 }
 
-button{
-background: #003366;
-color: white;
-margin-left: 4%;
-margin-top: 4%;
-padding: 12px 18px;
-border-radius: 10px;
-border: none;
-cursor: pointer;
-
-}
-.section h2 {
-margin-bottom: 10px;
-color: #4da6ff;
+.ref-card {
+  padding: var(--space-5);
 }
 
-/* LIST */
-ul {
-list-style: none;
-padding: 0;
+.ref-card h2 {
+  font-size: 16px;
+  color: var(--accent);
+  margin-bottom: var(--space-3);
 }
 
-li {
-margin: 8px 0;
+.ref-card ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-/* LINKS */
-a {
-color: #ccc;
-text-decoration: none;
+.ref-card a {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
 }
 
-a:hover {
-color: #4da6ff;
+.ref-card a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+@media (max-width: 1024px) {
+  .ref-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .ref-grid {
+    grid-template-columns: 1fr;
+  }
 }

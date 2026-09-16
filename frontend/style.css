@@ -1,406 +1,197 @@
-/* RESET */
+/* style.css — page-specific styles for index.html (hero + chatbot) and the
+   legal pages (terms.html / privacy.html). Relies on shared/shared.css for
+   tokens, reset, buttons, cards, header and footer. */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  }
-
-/* BODY */
-body {
-font-family: Arial, sans-serif;
-background: #0f172a;
-color: #e2e8f0;
-min-height: 100vh;
-}
-
-/* ================= NAVBAR ================= */
-
-.navbar {
-display: flex;
-justify-content: space-between;
-align-items: center;
-padding: 15px 40px;
-background: #020617;
-border-bottom: 1px solid #1e293b;
-}
-
-.logo {
-font-size: 18px;
-font-weight: bold;
-color: #38bdf8;
-}
-
-/* NAV LINKS */
-
-.nav-links {
-list-style: none;
-display: flex;
-gap: 25px;
-}
-
-.nav-links li {
-cursor: pointer;
-transition: 0.2s;
-}
-
-.nav-links li:hover {
-color: #38bdf8;
-}
-
-/* RIGHT SIDE */
-
-.nav-right {
-display: flex;
-align-items: center;
-gap: 10px;
-}
-
-/* LOGOUT */
-
-.logout-btn {
-border: 1px solid #ef4444;
-background: transparent;
-color: #ef4444;
-padding: 6px 12px;
-border-radius: 6px;
-cursor: pointer;
-}
-
-.logout-btn:hover {
-background: #ef4444;
-color: white;
-}
-
-/* ================= HERO WRAPPER ================= */
+/* ---------------------------------------------------------------------
+   HOME — HERO
+   --------------------------------------------------------------------- */
 
 .hero-wrapper {
-max-width: 1200px;
-margin: 40px auto;
-padding: 40px;
-border-radius: 20px;
-background: #020617;
-border: 1px solid #1e293b;
+  background: linear-gradient(180deg, var(--surface-secondary) 0%, var(--bg) 60%);
 }
-
-/* ================= HERO ================= */
 
 .hero {
-display: flex;
-justify-content: space-between;
-align-items: center;
-gap: 60px;
-flex-wrap: wrap;
-}
-
-/* LEFT */
-
-.hero-left {
-width: 50%;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: var(--space-7);
+  align-items: center;
+  min-height: calc(100vh - var(--header-height) - 260px);
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-7);
 }
 
 .hero-left h1 {
-font-size: 40px;
-margin-bottom: 20px;
+  margin-bottom: var(--space-4);
 }
 
-.hero-left span {
-color: #38bdf8;
+.hero-left h1 span {
+  color: var(--accent);
 }
 
-.hero-left p {
-color: #94a3b8;
-margin-bottom: 25px;
+.hero-left > p {
+  font-size: 16px;
+  max-width: 480px;
+  margin-bottom: var(--space-5);
 }
-
-/* BUTTONS */
 
 .hero-buttons {
-margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
-.primary-btn {
-background: #38bdf8;
-color: black;
-padding: 12px 18px;
-border-radius: 10px;
-border: none;
-cursor: pointer;
-transition: 0.2s;
+.quick-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
-
-.primary-btn:hover {
-background: #0ea5e9;
-}
-
-.secondary-btn {
-background: transparent;
-border: 1px solid #38bdf8;
-color: #38bdf8;
-padding: 12px 18px;
-border-radius: 10px;
-margin-left: 10px;
-cursor: pointer;
-}
-
-.secondary-btn:hover {
-background: #38bdf8;
-color: black;
-}
-
-/* QUICK TOPICS */
 
 .quick-topics span {
-display: inline-block;
-margin: 5px;
-padding: 8px 14px;
-background: #020617;
-border: 1px solid #1e293b;
-border-radius: 20px;
-cursor: pointer;
-font-size: 13px;
-transition: 0.2s;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .quick-topics span:hover {
-background: #38bdf8;
-color: black;
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
-/* ================= CHAT ================= */
+/* ---------------------------------------------------------------------
+   HOME — CHAT CARD
+   --------------------------------------------------------------------- */
 
 .hero-right {
-width: 40%;
-display: flex;
-justify-content: center;
+  width: 100%;
 }
 
-/* CHAT BOX */
-
-.container {
-width: 100%;
-max-width: 420px;
-height: 520px;
-background: #020617;
-border-radius: 16px;
-display: flex;
-flex-direction: column;
-border: 1px solid #1e293b;
-box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+.chat-card {
+  display: flex;
+  flex-direction: column;
+  height: 520px;
+  overflow: hidden;
 }
 
-/* HEADER */
-
-.header {
-background: #020617;
-color: #38bdf8;
-padding: 14px;
-font-size: 15px;
-font-weight: bold;
-border-bottom: 1px solid #1e293b;
+.chat-card__header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
-
-/* CHAT BODY */
 
 #chatbox {
-flex: 1;
-padding: 15px;
-overflow-y: auto;
-display: flex;
-flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-/* MESSAGES */
-
-.message {
-margin: 10px 0;
-padding: 12px;
-border-radius: 14px;
-max-width: 75%;
-font-size: 14px;
+#chatbox .message {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.user {
-background: #38bdf8;
-color: black;
-align-self: flex-end;
+#chatbox .message.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-bottom-right-radius: 4px;
 }
 
-.bot {
-background: #1e293b;
-color: #e2e8f0;
-align-self: flex-start;
+#chatbox .message.bot {
+  align-self: flex-start;
+  background: var(--surface-secondary);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
 }
-
-/* INPUT */
 
 .input-area {
-display: flex;
-padding: 10px;
-border-top: 1px solid #1e293b;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 
-input {
-flex: 1;
-padding: 10px;
-border: none;
-outline: none;
-border-radius: 8px;
-background: #1e293b;
-color: white;
+.input-area input {
+  flex: 1;
 }
 
-button {
-margin-left: 10px;
-padding: 10px 14px;
-background: #38bdf8;
-color: black;
-border: none;
-border-radius: 8px;
-cursor: pointer;
+.input-area .btn {
+  padding: 11px 16px;
 }
 
-button:hover {
-background: #0ea5e9;
-}
-
-/* SCROLLBAR */
-
-#chatbox::-webkit-scrollbar {
-width: 6px;
-}
-
-#chatbox::-webkit-scrollbar-thumb {
-background: #334155;
-border-radius: 10px;
-}
-
-#loginLink a {
-color: #d2dbdf;
-text-decoration: none;
-}
-
-/* ================= RESPONSIVE ================= */
-
-@media (max-width: 900px) {
-.hero-left,
-.hero-right {
-width: 100%;
-}
-
-
-.hero {
-    flex-direction: column;
-    text-align: center;
-}
-
-
-}
-.footer {
-margin-top: 40px;
-padding: 20px 40px;
-background: #020617;
-border-top: 1px solid #1e293b;
-}
-
-.footer-content {
-display: flex;
-justify-content: space-between;
-align-items: center;
-max-width: 1200px;
-margin: auto;
-}
-
-.footer-links a {
-margin-left: 20px;
-text-decoration: none;
-color: #94a3b8;
-font-size: 14px;
-transition: 0.2s;
-}
-
-.footer-links a:hover {
-color: #38bdf8;
-}
-
-.copyright {
-font-size: 14px;
-color: #64748b;
-}
-
-.disclaimer {
-    font-size: 12px;
-    color: #94a3b8;
-    margin-top: 10px;
-    line-height: 1.5;
-    max-width: 800px;
-}
-.privacy-text {
-    font-size: 14px;
-    color: #94a3b8;
-    line-height: 1.6;
-    margin-top: 10px;
-}
-.terms-text {
-    font-size: 14px;
-    color: #94a3b8;
-    line-height: 1.6;
-    margin-top: 10px;
-}
-/* ================= LEGAL PAGES ================= */
+/* ---------------------------------------------------------------------
+   LEGAL PAGES (terms.html / privacy.html)
+   --------------------------------------------------------------------- */
 
 .legal-page {
-    min-height: calc(100vh - 69px);
-    width: 100%;
-    padding: 40px;
-    background: #0f172a;
+  display: flex;
+  justify-content: center;
 }
 
 .legal-container {
-    width: 100%;
-    min-height: calc(100vh - 149px);
-    padding: 40px 50px;
-    background: #020617;
-    border: 1px solid #1e293b;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  width: 100%;
+  max-width: 760px;
+  padding: var(--space-7) var(--space-5);
 }
 
 .legal-container h2 {
-    color: #e2e8f0;
-    font-size: 28px;
-    margin-bottom: 20px;
+  margin-bottom: var(--space-3);
 }
 
-.privacy-text,
-.terms-text {
-    font-size: 15px;
-    color: #94a3b8;
-    line-height: 1.8;
-    margin-bottom: 18px;
+.legal-container h3 {
+  margin-top: var(--space-6);
 }
 
-/* MOBILE */
+.legal-container p,
+.legal-container li {
+  font-size: 14.5px;
+  margin-bottom: var(--space-3);
+}
 
-@media (max-width: 700px) {
+.legal-container ul {
+  padding-left: var(--space-5);
+  list-style: disc;
+}
 
-    .legal-page {
-        padding: 20px;
-    }
+/* ---------------------------------------------------------------------
+   RESPONSIVE
+   --------------------------------------------------------------------- */
 
-    .legal-container {
-        min-height: calc(100vh - 109px);
-        padding: 25px 20px;
-        border-radius: 12px;
-    }
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    gap: var(--space-6);
+  }
 
-    .legal-container h2 {
-        font-size: 24px;
-    }
+  .chat-card {
+    height: 440px;
+  }
+}
 
-    .privacy-text,
-    .terms-text {
-        font-size: 14px;
-        line-height: 1.7;
-    }
+@media (max-width: 480px) {
+  .hero-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-card {
+    height: 400px;
+  }
+
+  #chatbox .message {
+    max-width: 92%;
+  }
 }

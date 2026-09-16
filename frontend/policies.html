@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Policies | Policy Tracker</title>
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme');
+                if (t !== 'light' && t !== 'dark') {
+                    t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+                }
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="shared/shared.css">
+    <link rel="stylesheet" href="policies.css">
+</head>
+
+<body data-page="policies" data-header="full">
+
+    <div id="app-header"></div>
+
+    <main class="page-container policies-page">
+
+        <div class="policies-heading">
+            <h1>Policies</h1>
+            <p>Browse tracked public policies by sector, category, and sub-category.</p>
+        </div>
+
+        <!-- Search + filters: structural only for this phase. Not wired to
+             a backend endpoint yet - the existing policy API is out of
+             scope to build against here, per the current phase's
+             instructions. Disabled so the UI doesn't imply functionality
+             that doesn't exist yet. -->
+        <div class="policies-toolbar card">
+            <div class="policies-search">
+                <input type="search" placeholder="Search policies..." disabled aria-label="Search policies">
+            </div>
+            <div class="policies-filters">
+                <select disabled aria-label="Filter by sector">
+                    <option>Sector</option>
+                </select>
+                <select disabled aria-label="Filter by category">
+                    <option>Category</option>
+                </select>
+                <select disabled aria-label="Filter by sub-category">
+                    <option>Sub-category</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="policies-count text-muted" id="policiesCount">
+            Policy listing will appear here once connected to the policy database.
+        </div>
+
+        <!-- Empty state - intentionally no fake/sample policy cards. This
+             grid is where policy cards (name, sector, category,
+             sub-category, short info, view details) will render once this
+             page is wired up to the existing backend policy API. -->
+        <div class="policies-grid" id="policiesGrid">
+            <div class="card policies-empty">
+                <h3>No policy data connected yet</h3>
+                <p>
+                    This page is structured to list policies from the existing policy database
+                    once it's connected here. In the meantime, you can ask the
+                    <a href="index.html">Policy Assistant</a> about a specific sector or topic.
+                </p>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="app-footer"></div>
+
+    <script src="shared/shared.js"></script>
+
+</body>
+
+</html>

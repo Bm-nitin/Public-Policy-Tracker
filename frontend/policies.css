@@ -1,0 +1,101 @@
+/* policies.css — page-specific layout for policies.html.
+   Relies on shared/shared.css for tokens, cards, inputs, header, footer.
+   This phase only builds the structural shell (search bar, filter row,
+   card grid) - no data fetching is wired up yet. */
+
+.policies-heading {
+  margin-bottom: var(--space-5);
+}
+
+.policies-heading p {
+  font-size: 15px;
+}
+
+.policies-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.policies-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.policies-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.policies-filters select {
+  min-width: 140px;
+}
+
+.policies-count {
+  font-size: 13px;
+  margin-bottom: var(--space-4);
+}
+
+.policies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.policies-empty {
+  grid-column: 1 / -1;
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.policies-empty h3 {
+  margin-bottom: var(--space-2);
+}
+
+.policies-empty a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.policies-empty a:hover {
+  text-decoration: underline;
+}
+
+/* Ready for future policy cards to drop into .policies-grid without
+   layout changes: name, sector/category/sub-category badges, short
+   description, and a "View details" action. */
+.policy-card {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.policy-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.policy-card__title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.policy-card__desc {
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .policies-filters {
+    width: 100%;
+  }
+
+  .policies-filters select {
+    flex: 1;
+    min-width: 0;
+  }
+}

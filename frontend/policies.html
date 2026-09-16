@@ -33,52 +33,50 @@
             <p>Browse tracked public policies by sector, category, and sub-category.</p>
         </div>
 
-        <!-- Search + filters: structural only for this phase. Not wired to
-             a backend endpoint yet - the existing policy API is out of
-             scope to build against here, per the current phase's
-             instructions. Disabled so the UI doesn't imply functionality
-             that doesn't exist yet. -->
         <div class="policies-toolbar card">
             <div class="policies-search">
-                <input type="search" placeholder="Search policies..." disabled aria-label="Search policies">
+                <input type="search" id="policySearch" placeholder="Search policies..." aria-label="Search policies">
             </div>
             <div class="policies-filters">
-                <select disabled aria-label="Filter by sector">
-                    <option>Sector</option>
+                <select id="sectorFilter" aria-label="Filter by sector">
+                    <option value="">All sectors</option>
                 </select>
-                <select disabled aria-label="Filter by category">
-                    <option>Category</option>
+                <select id="categoryFilter" aria-label="Filter by category">
+                    <option value="">All categories</option>
                 </select>
-                <select disabled aria-label="Filter by sub-category">
-                    <option>Sub-category</option>
+                <select id="subCategoryFilter" aria-label="Filter by sub-category">
+                    <option value="">All sub-categories</option>
                 </select>
+                <button type="button" id="clearFiltersBtn" class="btn btn-ghost">Clear Filters</button>
             </div>
         </div>
 
-        <div class="policies-count text-muted" id="policiesCount">
-            Policy listing will appear here once connected to the policy database.
-        </div>
+        <div class="policies-count text-muted" id="policiesCount" aria-live="polite"></div>
 
-        <!-- Empty state - intentionally no fake/sample policy cards. This
-             grid is where policy cards (name, sector, category,
-             sub-category, short info, view details) will render once this
-             page is wired up to the existing backend policy API. -->
-        <div class="policies-grid" id="policiesGrid">
-            <div class="card policies-empty">
-                <h3>No policy data connected yet</h3>
-                <p>
-                    This page is structured to list policies from the existing policy database
-                    once it's connected here. In the meantime, you can ask the
-                    <a href="index.html">Policy Assistant</a> about a specific sector or topic.
-                </p>
-            </div>
-        </div>
+        <!-- Populated by policies.js. Loading / error / empty states all
+             render inside this same container so only one is visible at
+             a time. -->
+        <div class="policies-grid" id="policiesGrid" aria-live="polite"></div>
+
+        <nav class="policies-pagination" id="policiesPagination" aria-label="Policy pages"></nav>
 
     </main>
 
     <div id="app-footer"></div>
 
+    <!-- Policy detail modal -->
+    <div class="policy-modal-overlay" id="policyModalOverlay" hidden>
+        <div class="policy-modal card" role="dialog" aria-modal="true" aria-labelledby="policyModalTitle">
+            <button type="button" class="policy-modal__close" id="policyModalClose" aria-label="Close details">&times;</button>
+            <div id="policyModalBody">
+                <!-- Filled by policies.js. Never built with innerHTML from
+                     raw API text - see policies.js for details. -->
+            </div>
+        </div>
+    </div>
+
     <script src="shared/shared.js"></script>
+    <script src="policies.js"></script>
 
 </body>
 

@@ -8,7 +8,7 @@ let isLoading = false;
 // header shown on every page, not just index.html. The fetch itself,
 // endpoint, and credentials:"include" behavior are unchanged - only where
 // the code lives changed. Chat behavior below is untouched.
-window.onload = function () {
+window.addEventListener("load", function () {
     let input = document.getElementById("userInput");
     if (input) {
         input.addEventListener("keypress", function(e) {
@@ -17,7 +17,20 @@ window.onload = function () {
             }
         });
     }
-};
+
+    // Minimum integration for policies.js's "Ask AI About This Policy"
+    // button: it navigates here with ?ask=<question>, which we populate
+    // into the existing chatbot input and send through the existing
+    // sendMessage()/chat pipeline - no second chatbot, no chatbot.py or
+    // retrieval.py changes.
+    const askParam = new URLSearchParams(window.location.search).get("ask");
+    if (askParam && input) {
+        input.value = askParam;
+        sendMessage();
+        // Clean the URL so refreshing the page doesn't resend the same question.
+        history.replaceState(null, "", window.location.pathname);
+    }
+});
 
 // Send message
 async function sendMessage() {

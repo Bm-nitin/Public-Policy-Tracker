@@ -1,7 +1,7 @@
 /* policies.css — page-specific layout for policies.html.
    Relies on shared/shared.css for tokens, cards, inputs, header, footer.
-   This phase only builds the structural shell (search bar, filter row,
-   card grid) - no data fetching is wired up yet. */
+   Search bar, filter row, card grid, pagination, and the detail modal
+   all render real data fetched by policies.js. */
 
 .policies-heading {
   margin-bottom: var(--space-5);
@@ -87,6 +87,112 @@
 
 .policy-card__desc {
   font-size: 13px;
+  flex: 1;
+}
+
+.policy-card__actions {
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.policies-error {
+  color: var(--danger);
+}
+
+/* --------------------------------------------------------------------
+   PAGINATION
+   -------------------------------------------------------------------- */
+
+.policies-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.policies-pagination__label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.policies-pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------
+   DETAIL MODAL
+   -------------------------------------------------------------------- */
+
+.policy-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--overlay);
+}
+
+.policy-modal-overlay[hidden] {
+  display: none;
+}
+
+.policy-modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.policy-modal__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.policy-modal__close:hover {
+  color: var(--text);
+}
+
+#policyModalBody h2 {
+  margin-bottom: var(--space-3);
+  padding-right: var(--space-6);
+}
+
+.policy-modal__field {
+  margin-top: var(--space-4);
+}
+
+.policy-modal__field h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.policy-modal__field p {
+  font-size: 14px;
+  color: var(--text);
+  white-space: pre-line;
+}
+
+#policyModalBody .btn {
+  margin-top: var(--space-5);
 }
 
 @media (max-width: 640px) {
@@ -97,5 +203,18 @@
   .policies-filters select {
     flex: 1;
     min-width: 0;
+  }
+
+  .policies-filters .btn {
+    width: 100%;
+  }
+
+  .policy-modal {
+    padding: var(--space-5);
+    max-height: 90vh;
+  }
+
+  .policies-pagination {
+    gap: var(--space-2);
   }
 }

@@ -132,15 +132,27 @@
      ------------------------------------------------------------------ */
 
   function loadSectorOptions() {
-    fetchJSON(API_BASE + "/sectors")
+    var url = API_BASE + "/sectors";
+    fetchJSON(url)
       .then(function (result) {
-        if (!result.ok) return;
-        var items = (result.data && result.data.data) || [];
+        if (!result.ok) {
+          logHttpFailure("loadSectorOptions", result);
+          showFilterLoadFailed(els.sectorFilter, "Sectors unavailable");
+          return;
+        }
+        var items = extractDataArray(result, "loadSectorOptions");
+        if (items === null) {
+          showFilterLoadFailed(els.sectorFilter, "Sectors unavailable");
+          return;
+        }
         fillSelect(els.sectorFilter, "All sectors", items.map(function (i) {
           return { value: i.sector, label: formatLabel(i.sector) };
         }), state.sector);
       })
-      .catch(function () { /* leave "All sectors" as the only option */ });
+      .catch(function (err) {
+        logNetworkFailure("loadSectorOptions", url, err);
+        showFilterLoadFailed(els.sectorFilter, "Sectors unavailable");
+      });
   }
 
   function loadCategoryOptions() {
@@ -149,20 +161,31 @@
 
     fetchJSON(url)
       .then(function (result) {
-        if (!result.ok) return;
-        var items = (result.data && result.data.data) || [];
+        if (!result.ok) {
+          logHttpFailure("loadCategoryOptions", result);
+          showFilterLoadFailed(els.categoryFilter, "Categories unavailable");
+          return;
+        }
+        var items = extractDataArray(result, "loadCategoryOptions");
+        if (items === null) {
+          showFilterLoadFailed(els.categoryFilter, "Categories unavailable");
+          return;
+        }
         fillSelect(els.categoryFilter, "All categories", items.map(function (i) {
           return { value: i.category, label: formatLabel(i.category) };
         }), state.category);
       })
-      .catch(function () { /* leave default option */ });
+      .catch(function (err) {
+        logNetworkFailure("loadCategoryOptions", url, err);
+        showFilterLoadFailed(els.categoryFilter, "Categories unavailable");
+      });
   }
 
   function loadSubCategoryOptions() {
     // No dedicated endpoint exists for this - derive distinct
     // sub_category values from real policy rows matching the current
     // sector/category filters (never hardcoded, never invented).
-    fetchAllFiltered({ sector: state.sector, category: state.category })
+    fetchAllFiltered({ sector: state.sector, category: state.category }, "loadSubCategoryOptions")
       .then(function (rows) {
         var seen = {};
         var subCats = [];
@@ -177,7 +200,10 @@
           return { value: s, label: formatLabel(s) };
         }), state.subCategory);
       })
-      .catch(function () { /* leave default option */ });
+      .catch(function (err) {
+        console.error("[policies.js] loadSubCategoryOptions: failed to derive sub-categories from /api/policies -", err);
+        showFilterLoadFailed(els.subCategoryFilter, "Sub-categories unavailable");
+      });
   }
 
   function fillSelect(selectEl, defaultLabel, options, currentValue) {
@@ -207,6 +233,84 @@
   }
 
   /* ------------------------------------------------------------------
+     DIAGNOSTICS - every filter-loading failure now logs a specific,
+     actionable console.error instead of being silently swallowed. This
+     matters because a CORS block, a 503 ("no database configured"), a
+     timed-out cold start, and a malformed response all produce the same
+     visible symptom (empty dropdown) but need different fixes - these
+     helpers make it possible to tell them apart from the console.
+     ------------------------------------------------------------------ */
+
+  function logHttpFailure(context, result) {
+    // result.ok === false: the request reached the server and got a
+    // real HTTP response back, so this is NOT a CORS block (a CORS
+    // rejection never produces a response the page can read at all -
+    // see logNetworkFailure below for that case).
+    var bodyPreview = result.rawText ? result.rawText.slice(0, 300) : "(empty body)";
+    console.error(
+      "[policies.js] " + context + ": " + result.url +
+      " responded with HTTP " + result.status + ". Body: " + bodyPreview +
+      (result.status === 503
+        ? " -> This is the backend's own \"no database configured\" response (see policies_routes.py's _database_unavailable_response()). The filter dropdowns and policy list will stay empty until DATABASE_URL is configured on the backend."
+        : "")
+    );
+  }
+
+  function logNetworkFailure(context, url, err) {
+    // fetch() rejected before any HTTP response was received. In a
+    // browser this is what you see for: a CORS policy rejection, DNS
+    // failure, the host being completely unreachable, or (commonly on
+    // Render's free tier) the backend still cold-starting when the
+    // request timed out. The browser's own console will usually show a
+    // more specific underlying reason (e.g. a
+    // "has been blocked by CORS policy" message) alongside this line.
+    console.error(
+      "[policies.js] " + context + ": request to " + url + " failed before a response was received (" +
+      (err && err.message ? err.message : err) +
+      "). Likely causes: a CORS rejection (check the browser console for a " +
+      "\"blocked by CORS policy\" message), the API being unreachable, or a network/DNS failure. " +
+      "This is NOT a case of the server returning an error - no response was received at all."
+    );
+  }
+
+  // Validates that a parsed response has the confirmed {"data": [...]}
+  // shape before anything tries to use it. Returns the array, or null
+  // (after logging exactly what was received) if the shape doesn't
+  // match - so a malformed/unexpected response never silently becomes
+  // an empty dropdown with no explanation.
+  function extractDataArray(result, context) {
+    if (result.parseError) {
+      console.error(
+        "[policies.js] " + context + ": " + result.url +
+        " returned a 2xx response but the body was not valid JSON. Raw body: " +
+        (result.rawText ? result.rawText.slice(0, 300) : "(empty)")
+      );
+      return null;
+    }
+    if (!result.data || !Array.isArray(result.data.data)) {
+      console.error(
+        "[policies.js] " + context + ": " + result.url +
+        " returned an unexpected shape (expected {\"data\": [...]}). Received: " +
+        JSON.stringify(result.data)
+      );
+      return null;
+    }
+    return result.data.data;
+  }
+
+  function showFilterLoadFailed(selectEl, message) {
+    // Makes the failure visible in the UI too, not just the console -
+    // an inert "All sectors" placeholder with no other options looks
+    // identical whether it loaded correctly with zero real options or
+    // silently failed, which is exactly what made this bug invisible.
+    selectEl.innerHTML = "";
+    var opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = message;
+    selectEl.appendChild(opt);
+  }
+
+  /* ------------------------------------------------------------------
      LISTING - normal (server-paginated) vs search (client-side, see
      module docstring for why: the API has no search parameter at all)
      ------------------------------------------------------------------ */
@@ -219,7 +323,7 @@
         sector: state.sector,
         category: state.category,
         sub_category: state.subCategory,
-      })
+      }, "fetchAndRenderPolicies(search)")
         .then(function (rows) {
           var term = state.search.toLowerCase();
           var filtered = rows.filter(function (row) {
@@ -241,7 +345,8 @@
 
           renderResults(pageItems, { page: state.page, per_page: PER_PAGE, total: total, pages: pages }, true);
         })
-        .catch(function () {
+        .catch(function (err) {
+          console.error("[policies.js] fetchAndRenderPolicies(search): failed -", err);
           renderError();
         });
       return;
@@ -254,16 +359,27 @@
     if (state.category) params.set("category", state.category);
     if (state.subCategory) params.set("sub_category", state.subCategory);
 
-    fetchJSON(API_BASE + "?" + params.toString())
+    var url = API_BASE + "?" + params.toString();
+    fetchJSON(url)
       .then(function (result) {
         if (!result.ok) {
+          logHttpFailure("fetchAndRenderPolicies", result);
           renderError();
           return;
         }
-        var body = result.data || {};
-        renderResults(body.data || [], body.pagination || { page: 1, per_page: PER_PAGE, total: 0, pages: 0 }, false);
+        if (result.parseError || !result.data || !Array.isArray(result.data.data) || !result.data.pagination) {
+          console.error(
+            "[policies.js] fetchAndRenderPolicies: " + url +
+            " returned an unexpected shape (expected {\"data\": [...], \"pagination\": {...}}). Received: " +
+            (result.parseError ? "(invalid JSON) " + result.rawText.slice(0, 300) : JSON.stringify(result.data))
+          );
+          renderError();
+          return;
+        }
+        renderResults(result.data.data, result.data.pagination, false);
       })
-      .catch(function () {
+      .catch(function (err) {
+        logNetworkFailure("fetchAndRenderPolicies", url, err);
         renderError();
       });
   }
@@ -273,7 +389,8 @@
   // and returns every row collected. Used for (a) client-side search
   // and (b) deriving real sub-category options - never for inventing
   // data, always the actual rows the API returned.
-  function fetchAllFiltered(filters) {
+  function fetchAllFiltered(filters, context) {
+    context = context || "fetchAllFiltered";
     var collected = [];
 
     function fetchPage(page) {
@@ -284,13 +401,19 @@
       if (filters.category) params.set("category", filters.category);
       if (filters.sub_category) params.set("sub_category", filters.sub_category);
 
-      return fetchJSON(API_BASE + "?" + params.toString()).then(function (result) {
-        if (!result.ok) throw new Error("policy fetch failed");
-        var body = result.data || {};
-        var rows = body.data || [];
-        collected = collected.concat(rows);
+      var url = API_BASE + "?" + params.toString();
+      return fetchJSON(url).then(function (result) {
+        if (!result.ok) {
+          logHttpFailure(context, result);
+          throw new Error(context + ": HTTP " + result.status + " from " + url);
+        }
+        var items = extractDataArray(result, context);
+        if (items === null) {
+          throw new Error(context + ": unexpected response shape from " + url);
+        }
+        collected = collected.concat(items);
 
-        var pagination = body.pagination || {};
+        var pagination = result.data.pagination || {};
         var hasMore = pagination.pages && page < pagination.pages && page < BATCH_PAGE_CAP;
         if (hasMore) {
           return fetchPage(page + 1);
@@ -568,11 +691,33 @@
   function fetchJSON(url) {
     return fetch(url)
       .then(function (response) {
-        return response.json()
-          .catch(function () { return null; })
-          .then(function (data) {
-            return { ok: response.ok, status: response.status, data: data };
-          });
+        return response.text().then(function (rawText) {
+          var parsed = null;
+          var parseError = null;
+          try {
+            parsed = rawText ? JSON.parse(rawText) : null;
+          } catch (e) {
+            parseError = e;
+          }
+          return {
+            ok: response.ok,
+            status: response.status,
+            data: parsed,
+            rawText: rawText,
+            parseError: parseError,
+            url: url,
+          };
+        });
+      })
+      .catch(function (networkError) {
+        // fetch() itself rejects only for network-level failures - a
+        // blocked CORS request, DNS failure, the server being
+        // unreachable/offline, a timed-out connection, etc. It does NOT
+        // reject for 4xx/5xx responses (those resolve with ok:false
+        // above). Re-throw with the URL attached so every caller's
+        // .catch() can log something actually diagnostic.
+        networkError.requestUrl = url;
+        throw networkError;
       });
   }
 })();

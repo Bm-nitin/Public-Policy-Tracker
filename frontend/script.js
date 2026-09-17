@@ -8,7 +8,7 @@ let isLoading = false;
 // header shown on every page, not just index.html. The fetch itself,
 // endpoint, and credentials:"include" behavior are unchanged - only where
 // the code lives changed. Chat behavior below is untouched.
-window.addEventListener("load", function () {
+window.onload = function () {
     let input = document.getElementById("userInput");
     if (input) {
         input.addEventListener("keypress", function(e) {
@@ -30,7 +30,7 @@ window.addEventListener("load", function () {
         // Clean the URL so refreshing the page doesn't resend the same question.
         history.replaceState(null, "", window.location.pathname);
     }
-});
+};
 
 // Send message
 async function sendMessage() {

@@ -164,8 +164,8 @@ def test_whitespace_only_query_returns_empty_list(populated_db_app):
 
 
 def test_stopword_only_query_returns_empty_list(populated_db_app):
-    """"what is the" contains no meaningful (non-stopword) tokens - must
-    not fall through to an unbounded/unfiltered fetch."""
+    """The query "what is the" contains no meaningful (non-stopword)
+    tokens - must not fall through to an unbounded/unfiltered fetch."""
     with populated_db_app.app_context():
         assert retrieve_policies("what is the") == []
 
@@ -226,12 +226,204 @@ def test_sector_match_outranks_unrelated_keyword_only_match(populated_db_app):
     assert "banking" in top_sectors
 
 
+# --- ranking hierarchy guarantees ------------------------------------------------
+#
+# These test _score_policy() directly against a minimal stand-in object
+# (not a real ORM Policy, not the database) so each tier can be isolated
+# and deliberately maxed out in every combination - proving the
+# hierarchy holds structurally, by construction, rather than merely
+# "for the queries we happened to try against the real dataset".
+
+class _FakePolicy:
+    """Bare attribute holder matching what _score_policy actually reads
+    off a Policy (name/category/sub_category/sector/change/impact) -
+    nothing ORM- or database-specific about it."""
+
+    def __init__(self, name="", category="", sub_category="", sector="",
+                 change="", impact=""):
+        self.name = name
+        self.category = category
+        self.sub_category = sub_category
+        self.sector = sector
+        self.change = change
+        self.impact = impact
+
+
+def test_name_tier_outranks_every_lower_tier_maxed_out_at_once():
+    """A weak-but-real name match must still outrank a policy that has
+    NO name match at all but maxes out category, sub_category, sector,
+    change, and impact simultaneously - proving lower-priority keyword
+    accumulation cannot unexpectedly outrank a genuine higher-priority
+    match, per the Phase 9 hardening brief."""
+    from retrieval import _score_policy, _tokenize
+
+    query_tokens = _tokenize("solar rooftop subsidy scheme")
+    weak_name_match = _FakePolicy(name="solar panel initiative")  # 1/3 name-token overlap, nothing else
+    maxed_lower_tiers = _FakePolicy(
+        name="totally unrelated title",
+        category="solar rooftop subsidy scheme",
+        sub_category="solar rooftop subsidy scheme",
+        sector="solar rooftop subsidy scheme",
+        change="solar rooftop subsidy scheme " * 5,
+        impact="solar rooftop subsidy scheme " * 5,
+    )
+    assert (
+        _score_policy(weak_name_match, query_tokens)
+        > _score_policy(maxed_lower_tiers, query_tokens)
+    )
+
+
+def test_category_tier_outranks_sector_change_impact_maxed_out():
+    from retrieval import _score_policy, _tokenize
+
+    query_tokens = _tokenize("digital health mission")
+    category_match_only = _FakePolicy(
+        category="digital health mission", sub_category="digital health mission"
+    )
+    maxed_lower_tiers = _FakePolicy(
+        sector="digital health mission",
+        change="digital health mission " * 5,
+        impact="digital health mission " * 5,
+    )
+    assert (
+        _score_policy(category_match_only, query_tokens)
+        > _score_policy(maxed_lower_tiers, query_tokens)
+    )
+
+
+def test_sector_tier_outranks_change_impact_maxed_out():
+    from retrieval import _score_policy, _tokenize
+
+    query_tokens = _tokenize("employment skill scheme")
+    sector_match_only = _FakePolicy(sector="employment skill scheme")
+    maxed_lower_tiers = _FakePolicy(
+        change="employment skill scheme " * 5,
+        impact="employment skill scheme " * 5,
+    )
+    assert (
+        _score_policy(sector_match_only, query_tokens)
+        > _score_policy(maxed_lower_tiers, query_tokens)
+    )
+
+
+def test_change_tier_outranks_impact_tier_at_equal_coverage():
+    from retrieval import _score_policy, _tokenize
+
+    query_tokens = _tokenize("farmer income support")
+    change_match_only = _FakePolicy(change="farmer income support")
+    impact_match_only = _FakePolicy(impact="farmer income support")
+    assert (
+        _score_policy(change_match_only, query_tokens)
+        > _score_policy(impact_match_only, query_tokens)
+    )
+
+
+def test_many_low_priority_keyword_matches_never_beat_one_high_priority_match():
+    """The scenario the brief explicitly calls out: accumulating lots of
+    low-priority (change/impact) keyword matches must never let a policy
+    with no name/category/sector relevance outrank one with a genuine
+    high-priority match, no matter how many low-priority tokens pile up."""
+    from retrieval import _score_policy, _tokenize
+
+    query_tokens = _tokenize(
+        "national rural livelihood mission employment scheme "
+        "income generation rural poverty alleviation program"
+    )
+    single_sector_match = _FakePolicy(sector="employment skill")
+    keyword_heavy_no_sector = _FakePolicy(
+        change="national rural livelihood mission employment scheme income "
+               "generation rural poverty alleviation program details here",
+        impact="national rural livelihood mission employment scheme income "
+               "generation rural poverty alleviation program outcomes noted",
+    )
+    assert (
+        _score_policy(single_sector_match, query_tokens)
+        > _score_policy(keyword_heavy_no_sector, query_tokens)
+    )
+
+
+def test_zero_score_when_nothing_matches_any_tier():
+    from retrieval import _score_policy, _tokenize
+
+    query_tokens = _tokenize("agriculture farmer subsidy")
+    no_match = _FakePolicy(
+        name="totally unrelated",
+        category="unrelated",
+        sub_category="unrelated",
+        sector="unrelated",
+        change="nothing relevant here",
+        impact="nothing relevant here either",
+    )
+    assert _score_policy(no_match, query_tokens) == 0.0
+
+
 # --- bounded retrieval ----------------------------------------------------------
 
 def test_get_candidate_policies_with_empty_tokens_returns_empty_without_querying(populated_db_app):
     from retrieval import get_candidate_policies
     with populated_db_app.app_context():
         assert get_candidate_policies(set()) == []
+
+
+def test_get_candidate_policies_ordering_is_deterministic_across_repeated_calls(populated_db_app):
+    """Without an explicit ORDER BY, LIMIT gives PostgreSQL no guarantee
+    about which rows (or what order) come back - see
+    get_candidate_policies()'s docstring. Assert both that repeated calls
+    agree with each other and that the order is the documented id-
+    ascending order, not merely "some order that happens to repeat"."""
+    from retrieval import get_candidate_policies
+    with populated_db_app.app_context():
+        first = [p.id for p in get_candidate_policies({"agriculture"})]
+        second = [p.id for p in get_candidate_policies({"agriculture"})]
+    assert first == second
+    assert first == sorted(first)
+
+
+def test_get_candidate_policies_respects_max_candidates_cap(populated_db_app):
+    """A tiny cap must still return a bounded, id-ascending prefix - not
+    an error and not an unbounded result."""
+    from retrieval import get_candidate_policies
+    with populated_db_app.app_context():
+        results = get_candidate_policies({"policy"}, max_candidates=2)
+    assert len(results) <= 2
+    assert [p.id for p in results] == sorted(p.id for p in results)
+
+
+# --- limit validation -------------------------------------------------------------
+
+def test_negative_limit_returns_empty_list_not_reversed_slice(populated_db_app):
+    """Python's list[:-1] silently drops the last element rather than
+    erroring or returning [] - retrieve_policies must not inherit that
+    footgun for a negative limit."""
+    with populated_db_app.app_context():
+        assert retrieve_policies("agriculture", limit=-1) == []
+        assert retrieve_policies("agriculture", limit=-100) == []
+
+
+def test_zero_limit_returns_empty_list(populated_db_app):
+    with populated_db_app.app_context():
+        assert retrieve_policies("agriculture", limit=0) == []
+
+
+def test_normal_positive_limit_is_respected(populated_db_app):
+    with populated_db_app.app_context():
+        results = retrieve_policies("policy government scheme", limit=2)
+    assert len(results) <= 2
+
+
+def test_very_large_limit_returns_all_available_matches_without_error(populated_db_app):
+    with populated_db_app.app_context():
+        results = retrieve_policies("policy government scheme agriculture education", limit=10 ** 9)
+    assert isinstance(results, list)
+    # Never more than the entire dataset, regardless of how large the
+    # requested limit is - and no IndexError/padding of any kind.
+    assert len(results) <= 151
+
+
+def test_non_integer_limit_returns_empty_list_instead_of_raising(populated_db_app):
+    with populated_db_app.app_context():
+        assert retrieve_policies("agriculture", limit="3") == []
+        assert retrieve_policies("agriculture", limit=3.5) == []
 
 
 # --- example queries from the Phase 9 brief -------------------------------------

@@ -1,16 +1,22 @@
 """
-Phase 8: read-only, database-backed Policy API.
+Read-only Policy API: /api/policies/*.
 
-Separate from auth_routes.py (which owns /api/auth/*) - this blueprint
-owns /api/policies/* and is deliberately read-only (GET only; no create/
-update/delete routes - the dataset is curated via data/*.json and loaded
-through backend/import_policies.py, not through this API).
+Separate from auth_routes.py (which owns /api/auth/*). Deliberately
+read-only (GET only) - the dataset is curated via data/*.json.
 
-Does not touch the existing JSON-backed GET /policies route in app.py at
-all - that route, and chatbot.py's retrieval behind it, are completely
-unchanged. This is a new, separate, database-backed surface added
-alongside it, not a replacement (that's Phase 9's job, explicitly out of
-scope here).
+JSON-backed (post-Phase-9 architecture change - see
+backend/policy_service.py's module docstring): this blueprint no longer
+requires PostgreSQL, a `policies` table, or any import step at all. It
+works identically whether or not Config.DATABASE_URL is configured,
+because policy data now comes entirely from backend/policy_loader.py's
+cached data/*.json load, not from a database query. PostgreSQL is still
+used elsewhere in this app (authentication - see backend/models.py) but
+that is unrelated to this blueprint.
+
+Does not touch the existing JSON-backed GET /policies route in app.py -
+that route (and chatbot.py's retrieval behind it) now shares the same
+underlying policy_loader.py-backed dataset as this blueprint, just via
+its own separate route.
 
 Every response is JSON, including error responses - no route here ever
 lets Flask's default HTML error page leak through, and no response ever
@@ -19,7 +25,6 @@ includes a SQL statement, credential, stack trace, or filesystem path.
 
 from flask import Blueprint, jsonify, request
 
-from config import Config
 from policy_service import (
     DEFAULT_PER_PAGE,
     MAX_PER_PAGE,
@@ -30,12 +35,6 @@ from policy_service import (
 )
 
 policies_bp = Blueprint("policies_api", __name__, url_prefix="/api/policies")
-
-
-def _database_unavailable_response():
-    return jsonify({
-        "error": "Policy API is temporarily unavailable: no database is configured."
-    }), 503
 
 
 def _parse_pagination_params():
@@ -68,19 +67,16 @@ def _parse_pagination_params():
 
 @policies_bp.route("", methods=["GET"])
 def list_policies():
-    if not Config.DATABASE_URL:
-        return _database_unavailable_response()
-
     page, per_page, error = _parse_pagination_params()
     if error:
         return error
 
-    # Filter values are passed straight through to
-    # policy_service.get_paginated_policies(), which uses SQLAlchemy's
-    # filter_by() (parameterized) - never interpolated into a raw SQL
-    # string. An unrecognized sector/category/sub_category value simply
-    # yields an empty (but still valid, total=0) result set, not an
-    # error - there is no fixed enum to validate against server-side.
+    # Filter values are compared with plain Python equality against the
+    # in-memory JSON-loaded dataset (see policy_service.py) - never SQL,
+    # nothing to parameterize or inject. An unrecognized sector/category/
+    # sub_category value simply yields an empty (but still valid,
+    # total=0) result set, not an error - there is no fixed enum to
+    # validate against server-side.
     sector = request.args.get("sector")
     category = request.args.get("category")
     sub_category = request.args.get("sub_category")
@@ -105,9 +101,6 @@ def list_policies():
 
 @policies_bp.route("/sectors", methods=["GET"])
 def list_sectors():
-    if not Config.DATABASE_URL:
-        return _database_unavailable_response()
-
     counts = get_sector_counts()
     data = [{"sector": sector, "count": count} for sector, count in sorted(counts.items())]
     return jsonify({"data": data}), 200
@@ -115,9 +108,6 @@ def list_sectors():
 
 @policies_bp.route("/categories", methods=["GET"])
 def list_categories():
-    if not Config.DATABASE_URL:
-        return _database_unavailable_response()
-
     sector = request.args.get("sector")
     counts = get_category_counts(sector=sector)
     data = [{"category": category, "count": count} for category, count in sorted(counts.items())]
@@ -128,16 +118,11 @@ def list_categories():
 def get_policy(policy_id):
     """Deliberately NOT an <int:policy_id> route converter: Werkzeug
     would reject a non-numeric segment before this function ever runs,
-    falling through to Flask's default HTML 404 page - exactly what the
-    Phase 8 brief says not to do ("Invalid IDs should also produce an
-    appropriate clean JSON error rather than an unexpected 500", and
-    more broadly no HTML error page anywhere in this API). Validating
-    inside the function instead means every failure mode - non-numeric
-    id, and valid-but-nonexistent id - gets our own clean JSON
-    response."""
-    if not Config.DATABASE_URL:
-        return _database_unavailable_response()
-
+    falling through to Flask's default HTML 404 page - exactly what this
+    API avoids everywhere (no HTML error page anywhere in this
+    blueprint). Validating inside the function instead means every
+    failure mode - non-numeric id, and valid-but-nonexistent id - gets
+    our own clean JSON response."""
     try:
         policy_id_int = int(policy_id)
     except (TypeError, ValueError):

@@ -1,13 +1,11 @@
 """
-Phase 8: GET /api/policies, GET /api/policies/<id>, GET /api/policies/sectors,
+GET /api/policies, GET /api/policies/<id>, GET /api/policies/sectors,
 GET /api/policies/categories.
 
-Uses policies_client (see conftest.py) - an isolated in-memory database
-per test, pre-populated with the REAL 151-record dataset via the actual
-import pipeline (not synthetic fixtures), so these tests exercise real
-data end to end. See conftest.py's flask_sqlalchemy shim docstring for
-what is/isn't validated in this offline sandbox vs. a real environment
-with flask-sqlalchemy + PostgreSQL installed.
+JSON-backed (see backend/policy_service.py's module docstring): uses
+policies_client (see conftest.py), the shared app's test client - no
+per-test database setup or import step, since policy data comes from
+the same process-cached data/*.json load every other consumer uses.
 """
 
 
@@ -256,26 +254,33 @@ def test_single_policy_response_never_exposes_source_file_or_timestamps(policies
     assert "updated_at" not in body["data"]
 
 
-# --- no database configured -------------------------------------------------
+# --- works regardless of DATABASE_URL (JSON-backed, no DB dependency) ------
 
-def test_list_policies_without_database_configured_returns_503(no_db_client):
+def test_list_policies_works_without_database_configured(no_db_client):
+    """ARCHITECTURE CHANGE: this API is JSON-backed now (see
+    backend/policy_service.py's module docstring), so unlike the
+    original Phase 8 version of this test (which asserted 503), it must
+    keep working when DATABASE_URL is unset - there is no policies table
+    to be unavailable any more."""
     response = no_db_client.get("/api/policies")
-    assert response.status_code == 503
+    assert response.status_code == 200
+    assert response.get_json()["pagination"]["total"] == 151
 
 
-def test_get_policy_without_database_configured_returns_503(no_db_client):
+def test_get_policy_works_without_database_configured(no_db_client):
     response = no_db_client.get("/api/policies/1")
-    assert response.status_code == 503
+    assert response.status_code == 200
 
 
-def test_sectors_without_database_configured_returns_503(no_db_client):
+def test_sectors_works_without_database_configured(no_db_client):
     response = no_db_client.get("/api/policies/sectors")
-    assert response.status_code == 503
+    assert response.status_code == 200
+    assert len(response.get_json()["data"]) == 15
 
 
-def test_categories_without_database_configured_returns_503(no_db_client):
+def test_categories_works_without_database_configured(no_db_client):
     response = no_db_client.get("/api/policies/categories")
-    assert response.status_code == 503
+    assert response.status_code == 200
 
 
 # --- 16: existing endpoints unaffected (backward compatibility) ------------

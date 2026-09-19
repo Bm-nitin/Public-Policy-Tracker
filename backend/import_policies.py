@@ -1,26 +1,26 @@
 """
-Phase 7: data/*.json -> policies table import.
+data/*.json validation utility.
 
-Two separate concerns, deliberately:
-  - validate_json_files(): read-only, no database access at all. Detects
-    malformed JSON, missing required fields, and structural issues
-    before any import is attempted.
-  - import_policies_from_json(): the actual idempotent, transaction-
-    wrapped import, built on top of validate_json_files() - aborts with
-    zero database writes if validation finds a hard problem.
+ARCHITECTURE CHANGE (post-Phase-9): the PostgreSQL "policies" table,
+the Policy ORM model, and this module's former import_policies_from_json()
+(which loaded data/*.json into that table) have all been retired - policy
+data is now sourced directly from data/*.json at request time via
+backend/policy_loader.py (which also assigns each policy a stable id -
+see its module docstring), for every consumer (the legacy `GET /policies`
+route, the `GET /api/policies*` blueprint, and backend/retrieval.py).
+There is no PostgreSQL "import" step left to run, so `flask
+import-policies` has been removed from backend/app.py.
 
-Run via the Flask CLI (registered in app.py):
-    flask import-policies
-    flask import-policies --dry-run
-
-Or call import_policies_from_json() directly from Python (tests do this).
+validate_json_files() survives unchanged (it never touched the database
+in the first place - see its own docstring) because the data-integrity
+guarantees it checks (malformed JSON, missing required fields, true
+(name, sector) duplicates) are exactly as relevant to a JSON-only pipeline
+as they were to a JSON-into-Postgres one - see tests/test_policy_loader.py
+and tests/test_policy_data_integrity.py, which call it directly.
 """
 
 import json
 import os
-
-from database import db
-from models import Policy
 
 REQUIRED_FIELDS = ("name", "category", "sub_category", "change", "impact")
 
@@ -124,108 +124,5 @@ def validate_json_files(data_dir=None):
     report["shared_names_across_sectors"] = {
         name: sectors for name, sectors in name_to_sectors.items() if len(sectors) > 1
     }
-
-    return report
-
-
-def import_policies_from_json(data_dir=None, dry_run=False):
-    """Idempotent, transaction-wrapped import of data/*.json into the
-    policies table.
-
-    Matches existing rows on (name, sector) - see Policy model's
-    docstring for why that pair, not name alone, is the natural key.
-    Safe to run more than once: re-running with unchanged JSON reports
-    everything as "skipped" and writes nothing.
-
-    Returns:
-      {"inserted": int, "updated": int, "skipped": int,
-       "validation": <validate_json_files() report>,
-       "aborted": bool, "abort_reason": str | None}
-
-    Aborts with ZERO database writes if validation finds malformed JSON,
-    missing required fields, or true (name, sector) duplicates in the
-    source - a partial import of bad data is worse than no import at
-    all.
-
-    dry_run=True runs the full comparison logic (so the report is
-    accurate) but rolls back instead of committing - useful for a
-    preview before actually writing.
-    """
-    validation = validate_json_files(data_dir)
-    report = {
-        "inserted": 0, "updated": 0, "skipped": 0,
-        "validation": validation,
-        "aborted": False, "abort_reason": None,
-    }
-
-    if not validation["ok"]:
-        report["aborted"] = True
-        report["abort_reason"] = (
-            "Source JSON failed validation (malformed files, missing "
-            "required fields, or true duplicate (name, sector) pairs) - "
-            "see the 'validation' report for details. No database "
-            "changes were made."
-        )
-        return report
-
-    data_dir = data_dir or _default_data_dir()
-
-    try:
-        for filename in sorted(os.listdir(data_dir)):
-            if not filename.endswith(".json"):
-                continue
-            sector = filename[:-len(".json")]
-            with open(os.path.join(data_dir, filename), encoding="utf-8") as f:
-                records = json.load(f)
-
-            for record in records:
-                name = record["name"]
-                existing = Policy.query.filter_by(name=name, sector=sector).first()
-
-                if existing is None:
-                    if not dry_run:
-                        new_policy = Policy(
-                            name=name,
-                            sector=sector,
-                            category=record["category"],
-                            sub_category=record["sub_category"],
-                            change=record["change"],
-                            impact=record["impact"],
-                            source_file=filename,
-                        )
-                        db.session.add(new_policy)
-                    report["inserted"] += 1
-                    continue
-
-                changed = (
-                    existing.category != record["category"]
-                    or existing.sub_category != record["sub_category"]
-                    or existing.change != record["change"]
-                    or existing.impact != record["impact"]
-                    or existing.source_file != filename
-                )
-                if changed:
-                    if not dry_run:
-                        existing.category = record["category"]
-                        existing.sub_category = record["sub_category"]
-                        existing.change = record["change"]
-                        existing.impact = record["impact"]
-                        existing.source_file = filename
-                        db.session.add(existing)
-                    report["updated"] += 1
-                else:
-                    report["skipped"] += 1
-
-        if dry_run:
-            db.session.rollback()
-        else:
-            db.session.commit()
-
-    except Exception:
-        # Transaction-aware: any failure mid-import rolls back
-        # everything from this run - no partial import is ever left
-        # committed, whether the failure is on record 1 or record 150.
-        db.session.rollback()
-        raise
 
     return report

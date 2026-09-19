@@ -1,12 +1,25 @@
 """
-Phase 9: Retrieval V2 - deterministic, database-backed policy retrieval
-and ranking.
+Phase 9 Retrieval V2 - deterministic policy retrieval and ranking.
+
+ARCHITECTURE CHANGE (post-Phase-9): this module no longer queries
+PostgreSQL at all. Policy data now comes entirely from
+backend/policy_loader.py's cached data/*.json load (the same dataset
+backend/policy_service.py's `GET /api/policies*` blueprint and the
+legacy `GET /policies` route both use) - see policy_loader.py's module
+docstring for how it assigns each policy a stable integer id. The
+Phase 9 hardening this module was built around - deterministic candidate
+ordering, the tier-based ranking hierarchy guarantee, limit validation,
+cached tokenization - is unchanged in substance; only the data source
+changed, from `Policy.query` to a plain Python list of dicts. Every
+policy dict a candidate is drawn from already has the keys
+name/category/sub_category/change/impact/sector/id - no ORM object,
+no `.attribute` access, no session, no app context required.
 
 Independent of Gemini: this module never calls Gemini and Gemini never
 influences which policies are considered relevant here. chatbot.py may
 use this module's results as an input to a later Gemini call in a future
-phase, but that grounding step is explicitly out of scope for Phase 9
-(see chatbot.py's integration point for exactly where this plugs in).
+phase, but that grounding step is explicitly out of scope here (see
+chatbot.py's integration point for exactly where this plugs in).
 
 Pipeline:
     user query
@@ -15,33 +28,29 @@ Pipeline:
            short words, same tokenizer chatbot.py's existing keyword
            matching already uses)
         -> bounded, deterministically-ordered candidate retrieval from
-           PostgreSQL (parameterized ILIKE across name/sector/category/
-           sub_category/change/impact, capped at MAX_CANDIDATES rows and
-           ordered by primary key - never an unbounded table scan, never
-           the JSON files; see get_candidate_policies()'s docstring for
-           why the explicit ordering matters even though it plays no
-           part in relevance)
+           the in-memory JSON-loaded dataset (substring match across
+           name/sector/category/sub_category/change/impact, capped at
+           MAX_CANDIDATES and in the dataset's own stable id order - see
+           get_candidate_policies()'s docstring)
         -> deterministic Python-side scoring, hierarchy-guaranteed by
            construction (see _score_policy)
         -> stable ranking (score DESC, normalized name ASC, id ASC)
         -> top `limit` (validated - see retrieve_policies())
 
-Reuses backend/policy_service.py's Policy import rather than duplicating
+Reuses backend/policy_loader.py's cached loader rather than duplicating
 data access, and backend/utils.py's existing normalization/tokenization
 functions rather than inventing new ones or a synonym dictionary.
 """
 
 from functools import lru_cache
 
-from sqlalchemy import or_
-
-from models import Policy
+from policy_loader import load_policies
 from utils import clean_text, extract_keywords
 
-# Candidate fetch is bounded at the SQL level (never an unbounded table
-# scan) - generous relative to the current 151-row dataset so it never
-# artificially excludes a real match today, but still a genuine cap that
-# protects a much larger future dataset.
+# Candidate fetch is bounded - generous relative to the current 151-row
+# dataset so it never artificially excludes a real match today, but
+# still a genuine cap that protects a much larger future dataset from
+# scoring every single record on every query.
 MAX_CANDIDATES = 300
 
 # Results returned to the caller after ranking - small and deliberate,
@@ -56,14 +65,12 @@ MAX_RESULTS = 5
 #
 #     name  >  category/sub_category  >  sector  >  change  >  impact
 #
-# Rather than tuning five independent additive constants (SCORE_EXACT_NAME
-# = 100, SCORE_NAME_TOKEN_MAX = 40, ...) and hoping no combination of
-# lower-tier matches ever adds up past a higher tier - which is exactly
-# the bug being hardened here - each tier is scored as a normalized
-# "digit" in [0.0, 1.0] and placed at a fixed positional weight (a power
-# of TIER_BASE), the same trick as place-value in a base-TIER_BASE number
-# system (ones/tens/hundreds, just with fractional digits and TIER_BASE
-# instead of 10):
+# Rather than tuning five independent additive constants and hoping no
+# combination of lower-tier matches ever adds up past a higher tier,
+# each tier is scored as a normalized "digit" in [0.0, 1.0] and placed
+# at a fixed positional weight (a power of TIER_BASE), the same trick as
+# place-value in a base-TIER_BASE number system (ones/tens/hundreds,
+# just with fractional digits and TIER_BASE instead of 10):
 #
 #     score = name_component      * TIER_BASE**4
 #           + category_component  * TIER_BASE**3
@@ -81,17 +88,12 @@ MAX_RESULTS = 5
 #
 # so no amount of change/impact keyword accumulation can ever outrank a
 # genuine sector match, no sector-only match can ever outrank a
-# category/sub_category match, and so on up the hierarchy. This is a
+# category/sub_category match, and so on up the hierarchy - a
 # mathematical guarantee of the ranking, not a "we picked big enough
-# constants" hope - see tests/test_retrieval.py's
-# "ranking hierarchy guarantees" section, which proves this for every
-# adjacent tier pair by deliberately maxing out every lower tier at once
-# and confirming the higher tier still wins.
-#
-# TIER_BASE = 1000 keeps a wide safety margin over the finest realistic
-# granularity of a component (roughly 1 / (number of tokens in a policy
-# name or query), which in this dataset is well under 50), while still
-# keeping the raw score value a normal, printable float.
+# constants" hope. See tests/test_retrieval.py's "ranking hierarchy
+# guarantees" section, which proves this for every adjacent tier pair by
+# deliberately maxing out every lower tier at once and confirming the
+# higher tier still wins.
 TIER_BASE = 1000
 
 
@@ -116,78 +118,64 @@ def _tokenize(text):
     time it's encountered. Safe to cache because _tokenize is a pure
     function of its string input and the frozenset it returns is
     immutable, so no caller can corrupt a cached result for another
-    caller. Not a premature-optimization concern at 151 rows either way
-    - this is a straightforward, low-risk elimination of genuinely
-    repeated work, not a redesign of the scoring itself.
+    caller.
     """
     return frozenset(extract_keywords(text))
 
 
-def _build_candidate_filter(tokens):
-    conditions = []
-    for token in tokens:
-        pattern = f"%{token}%"
-        conditions.append(Policy.name.ilike(pattern))
-        conditions.append(Policy.sector.ilike(pattern))
-        conditions.append(Policy.category.ilike(pattern))
-        conditions.append(Policy.sub_category.ilike(pattern))
-        conditions.append(Policy.change.ilike(pattern))
-        conditions.append(Policy.impact.ilike(pattern))
-    return or_(*conditions)
-
-
 def get_candidate_policies(tokens, max_candidates=MAX_CANDIDATES):
-    """Bounded, parameterized, deterministically-ordered candidate fetch
-    from PostgreSQL - never an unbounded scan, never raw string-
-    interpolated SQL (every token is a bound ilike() parameter). Returns
-    [] immediately for an empty token set rather than fetching anything.
+    """Bounded, deterministically-ordered candidate fetch from the
+    in-memory JSON-loaded dataset (backend/policy_loader.py). Returns []
+    immediately for an empty token set rather than scanning anything.
 
-    Ordering tradeoff (read before removing the order_by):
-    LIMIT alone bounds *how many* rows PostgreSQL returns, but says
-    nothing about *which* rows they are or in what order, unless the
-    query is explicitly ordered - Postgres is free to hand back any
-    matching N rows, in any order, and that choice can silently change
-    between runs (parallel sequential/bitmap-heap scan worker
-    scheduling, autovacuum reshuffling pages, a replica with a different
-    physical layout than the primary, a future index that changes the
-    cheapest plan, etc). At the current dataset size (151 rows, always
-    under MAX_CANDIDATES) that non-determinism happens to be unobservable
-    - every matching row is returned regardless of order - but it stops
-    being unobservable the moment a token match count exceeds
-    MAX_CANDIDATES, at which point *which* rows get truncated away would
-    be silently unstable, breaking the "repeated calls return identical
-    results" and tie-breaking guarantees this module promises.
+    Ordering: policy_loader.load_policies() already returns policies in
+    a fixed, stable order (ascending id, itself assigned deterministically
+    from sorted filenames + JSON array order - see that module's
+    docstring), and this function preserves that order rather than
+    reshuffling it. This is a meaningfully simpler story than the old
+    PostgreSQL-backed version of this function needed: a SQL
+    `LIMIT` with no `ORDER BY` gives the database no ordering guarantee
+    (see git history / the Phase 9 hardening report for the full
+    reasoning), but there is no query planner here at all - `matching`
+    is a plain Python list comprehension over an already-ordered
+    in-memory list, so truncating it with `[:max_candidates]` is
+    trivially and unconditionally deterministic on every call, with
+    nothing further required to guarantee it.
 
-    Policy.id (the primary key - already indexed, no migration needed) is
-    used as that explicit order (ascending, SQL's default when no
-    direction is specified). It is a deliberately "meaningless"
-    tie-break for this purpose - id order carries no relevance signal -
-    but that is exactly the point: candidate *selection* only needs to
-    be reproducible, not relevance-ordered, because actual relevance
-    ordering is entirely the job of the Python-side scoring/ranking step
-    that runs after this. A more elaborate "order by relevance-ish
-    heuristic before LIMIT" was considered and rejected as needless
-    complexity duplicating work _score_policy already does properly.
+    Candidate *selection* only needs to be reproducible, not
+    relevance-ordered - actual relevance ordering is entirely the job of
+    the Python-side scoring/ranking step that runs after this.
     """
     if not tokens:
         return []
-    return (
-        Policy.query
-        .filter(_build_candidate_filter(tokens))
-        .order_by(Policy.id)
-        .limit(max_candidates)
-        .all()
-    )
+
+    matching = []
+    for policy in load_policies():
+        haystacks = (
+            policy["name"].lower(), policy["sector"].lower(), policy["category"].lower(),
+            policy["sub_category"].lower(), policy["change"].lower(), policy["impact"].lower(),
+        )
+        # Checked per-field (not one joined string) so a token can never
+        # false-positive by spanning the boundary between two fields.
+        if any(token in field for field in haystacks for token in tokens):
+            matching.append(policy)
+            if len(matching) >= max_candidates:
+                break
+
+    return matching
 
 
 def _score_policy(policy, query_tokens):
-    """Deterministic, explainable score. See the TIER_BASE discussion
-    above for why the hierarchy (name > category/sub_category > sector >
-    change > impact) is guaranteed rather than merely "usually true".
-    Returns a float >= 0; a score of 0 means "no meaningful match" (see
-    retrieve_policies(), which filters these out rather than returning
-    arbitrary zero-score rows)."""
-    name_tokens = _tokenize(policy.name)
+    """Deterministic, explainable score. `policy` is a plain dict (from
+    policy_loader.py or a test stand-in) with name/category/
+    sub_category/sector/change/impact keys - no ORM object, no database
+    access. See the TIER_BASE discussion above for why the hierarchy
+    (name > category/sub_category > sector > change > impact) is
+    guaranteed rather than merely "usually true". Returns a float >= 0;
+    a score of 0 means "no meaningful match" (see retrieve_policies(),
+    which filters these out rather than returning arbitrary zero-score
+    rows)."""
+    name_tokens = _tokenize(policy["name"])
     query_token_count = len(query_tokens) or 1  # guard: never called with empty query_tokens in practice
 
     # Tier 1 - name. Compared as a normalized token set (order-
@@ -208,9 +196,9 @@ def _score_policy(policy, query_tokens):
     # level). Each half is worth up to 0.5 so a match on both still caps
     # at the tier maximum of 1.0.
     category_component = 0.0
-    if query_tokens & _tokenize(policy.category):
+    if query_tokens & _tokenize(policy["category"]):
         category_component += 0.5
-    if query_tokens & _tokenize(policy.sub_category):
+    if query_tokens & _tokenize(policy["sub_category"]):
         category_component += 0.5
 
     # Tier 3 - sector. Sector values are filename-derived (e.g.
@@ -218,17 +206,17 @@ def _score_policy(policy, query_tokens):
     # still matches. A sector match is boolean (present/absent), not a
     # partial-coverage ratio, so it's either 0.0 or the tier max of 1.0.
     sector_component = 0.0
-    if query_tokens & _tokenize(policy.sector.replace("_", " ")):
+    if query_tokens & _tokenize(policy["sector"].replace("_", " ")):
         sector_component = 1.0
 
     # Tier 4 - change keyword matches, normalized by how much of the
     # *query* they cover (not the field's length, which is often long
     # free text) so this tier is also capped at 1.0.
-    change_overlap = len(query_tokens & _tokenize(policy.change))
+    change_overlap = len(query_tokens & _tokenize(policy["change"]))
     change_component = change_overlap / query_token_count if change_overlap else 0.0
 
     # Tier 5 - impact keyword matches, same normalization as change.
-    impact_overlap = len(query_tokens & _tokenize(policy.impact))
+    impact_overlap = len(query_tokens & _tokenize(policy["impact"]))
     impact_component = impact_overlap / query_token_count if impact_overlap else 0.0
 
     return (
@@ -242,15 +230,17 @@ def _score_policy(policy, query_tokens):
 
 def retrieve_policies(raw_query, limit=MAX_RESULTS):
     """The main Retrieval V2 entry point. Returns a list of dicts (each
-    Policy.to_dict()'s shape plus `id` and `score`), ranked highest-score
-    first, tie-broken by normalized name then id for full determinism.
-    Returns [] for an empty/whitespace-only query, a query with no
-    meaningful (non-stopword) tokens, an invalid `limit`, or a query that
-    matches nothing in the database - never returns arbitrary policies
-    just because the table is non-empty.
+    the policy's own dict - name/category/sub_category/change/impact/
+    sector/id - plus `score`), ranked highest-score first, tie-broken by
+    normalized name then id for full determinism. Returns [] for an
+    empty/whitespace-only query, a query with no meaningful
+    (non-stopword) tokens, an invalid `limit`, or a query that matches
+    nothing in the dataset - never returns arbitrary policies just
+    because the dataset is non-empty. No Flask app context, database
+    connection, or PostgreSQL of any kind is required to call this.
 
     `limit` contract (unchanged public signature - retrieve_policies(query,
-    limit=...) - only its handling of edge values is now explicit):
+    limit=...) - only its handling of edge values is explicit):
       - limit <= 0 (including negative values): returns [] immediately,
         before any candidate retrieval or scoring is attempted. This is
         deliberate, not merely "whatever falls out of list slicing" -
@@ -294,12 +284,11 @@ def retrieve_policies(raw_query, limit=MAX_RESULTS):
         return []
 
     # Deterministic tie-breaking: score DESC, normalized name ASC, id ASC.
-    scored.sort(key=lambda pair: (-pair[0], clean_text(pair[1].name), pair[1].id))
+    scored.sort(key=lambda pair: (-pair[0], clean_text(pair[1]["name"]), pair[1]["id"]))
 
     results = []
     for score, policy in scored[:limit]:
-        data = policy.to_dict()
-        data["id"] = policy.id
+        data = dict(policy)
         data["score"] = score
         results.append(data)
     return results

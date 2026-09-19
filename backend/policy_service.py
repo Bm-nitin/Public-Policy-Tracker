@@ -1,107 +1,109 @@
 """
-Phase 7: database-backed policy retrieval.
-Phase 8: pagination, filtering, and single-record/category lookups added
-for the read-only Policy API (see backend/policies_routes.py).
+Policy data service - JSON-backed.
 
-Deliberately NOT wired into chatbot.py in this phase - the Phase 7 brief
-is explicit: "DO NOT completely redesign retrieval... introduce a
-database-backed policy loading/service layer that can coexist with the
-current retrieval behavior... Phase 9 will redesign retrieval." So this
-module exists in parallel to backend/policy_loader.py (JSON-backed,
-unchanged, still what chatbot.py actually uses today), ready for Phase 9
-to switch over.
+ARCHITECTURE CHANGE (post-Phase-9): policy data no longer lives in
+PostgreSQL at all. backend/models.py's Policy ORM model, the
+`policies` table, and backend/import_policies.py's PostgreSQL importer
+have all been retired - data/*.json (via backend/policy_loader.py,
+which now also assigns each policy a stable integer id - see its module
+docstring) is the one and only source of truth for policy data, for
+every consumer: the legacy JSON `GET /policies` route in app.py, the
+`GET /api/policies*` blueprint (backend/policies_routes.py, via this
+module), and backend/retrieval.py.
 
-load_policies_from_db() intentionally returns the exact same shape
-policy_loader.load_policies() does - a flat list of dicts with keys name/
-category/sub_category/change/impact/sector - so any code written against
-the JSON loader's output already works unchanged against this, without
-knowing or caring which one produced it.
+PostgreSQL is unchanged for everything else: users, email verification
+tokens, sessions, and password reset tokens still live there exactly as
+before (see backend/models.py) - this migration touches ONLY the
+policy-data storage layer, nothing authentication-related.
+
+This module keeps the exact same public function names/signatures
+backend/policies_routes.py already imports (get_paginated_policies,
+get_policy_by_id, get_sector_counts, get_category_counts) so the
+Phase 8 API's routing code needed zero changes for this migration - only
+what these functions do internally changed (in-memory list operations
+over backend/policy_loader.py's cached data instead of SQLAlchemy
+queries against a Postgres table). Every function's return shape is
+byte-for-byte identical to before.
 """
 
-from models import Policy
+from policy_loader import get_policy_by_id as _get_policy_by_id_from_loader
+from policy_loader import load_policies
 
 DEFAULT_PER_PAGE = 20
 MAX_PER_PAGE = 100
 
 
-def load_policies_from_db():
-    """Returns every policy row as a plain dict (see Policy.to_dict()),
-    in the same shape backend/policy_loader.py's load_policies()
-    produces. Does not cache (unlike policy_loader.py's process-lifetime
-    cache) - the database is already fast for this size of table, and an
-    explicit cache would just be another place Phase 9's eventual
-    retrieval redesign would need to reason about invalidating."""
-    return [policy.to_dict() for policy in Policy.query.all()]
+def load_all_policies():
+    """Every policy as a plain dict (name/category/sub_category/change/
+    impact/sector/id) - policy_loader.load_policies()'s own shape,
+    unmodified. No separate cache here (policy_loader.py already caches
+    for the process lifetime) and no database - this always just returns
+    the in-memory list."""
+    return load_policies()
 
 
 def get_policy_count():
-    return len(Policy.query.all())
+    return len(load_policies())
 
 
 def get_sector_counts():
-    """Returns {sector: count} for every sector currently in the
-    database - useful for the import script's reporting and for tests
-    that need to confirm the DB matches the source JSON without
-    hardcoding expected numbers (see the Phase 7 brief's "do not hardcode
-    151 as truth")."""
+    """Returns {sector: count} for every sector currently loaded -
+    computed from the live in-memory data, never hardcoded (e.g. never
+    assumes 151/15 - see backend/import_policies.py's validate_json_files()
+    docstring for why that mattered even in the old DB-backed pipeline,
+    and it matters just as much here)."""
     counts = {}
-    for policy in Policy.query.all():
-        counts[policy.sector] = counts.get(policy.sector, 0) + 1
+    for policy in load_policies():
+        counts[policy["sector"]] = counts.get(policy["sector"], 0) + 1
     return counts
 
 
 def get_category_counts(sector=None):
     """Returns {category: count}, optionally scoped to a single sector.
-    Same "compute from the live rows, never hardcode" approach as
+    Same "compute from the live data, never hardcode" approach as
     get_sector_counts() - used by GET /api/policies/categories."""
-    query = Policy.query
-    if sector is not None:
-        query = query.filter_by(sector=sector)
     counts = {}
-    for policy in query.all():
-        counts[policy.category] = counts.get(policy.category, 0) + 1
+    for policy in load_policies():
+        if sector is not None and policy["sector"] != sector:
+            continue
+        counts[policy["category"]] = counts.get(policy["category"], 0) + 1
     return counts
 
 
 def _policy_to_api_dict(policy):
-    """Policy.to_dict()'s shape plus `id`. to_dict() intentionally omits
-    id (chatbot.py's existing code never needs it - see models.py), but
-    an API response representing a specific database row should include
-    its own identifier: by ordinary REST convention, and because
-    GET /api/policies/<id> would otherwise be undiscoverable from a list
-    response that never shows any id. This is the Phase 8 API's shape,
-    not a change to to_dict() itself or to anything chatbot.py uses."""
-    data = policy.to_dict()
-    data["id"] = policy.id
-    return data
+    """The policy dict as-is - policy_loader.py's dicts already include
+    `id` (see its module docstring) and never included source_file/
+    timestamps in the first place (those were Postgres-row-only fields
+    that no longer exist anywhere), so, unlike the old DB-backed version
+    of this function, there is nothing left to add or strip here. Kept
+    as its own function (rather than inlining `policy`) so
+    get_paginated_policies()/get_policy_by_id() have one obvious place
+    to change the API's per-policy shape again in the future without
+    hunting through every caller."""
+    return policy
 
 
 def get_paginated_policies(page=1, per_page=DEFAULT_PER_PAGE,
                             sector=None, category=None, sub_category=None):
-    """Returns {"items": [dict, ...], "total": int}. Filtering uses
-    SQLAlchemy's filter_by() (parameterized under the hood - never raw
-    SQL string interpolation of user input). Ordered by id for a stable,
-    deterministic page-to-page sequence - without an explicit ORDER BY,
-    row order across separate paginated queries is not guaranteed by
-    SQL. Caller (backend/policies_routes.py) is responsible for
-    validating page/per_page are sane positive integers before calling
-    this - this function trusts its arguments."""
-    query = Policy.query
+    """Returns {"items": [dict, ...], "total": int}. Filters the
+    in-memory list directly (no SQL, no parameterization concerns - it's
+    a plain Python equality check against literal dict values).
+    Iterates load_policies() in its already-deterministic id order (see
+    policy_loader.py), so pagination is stable page-to-page without
+    needing an explicit sort step here. Caller (backend/policies_routes.py)
+    is responsible for validating page/per_page are sane positive
+    integers before calling this - this function trusts its arguments."""
+    matching = [
+        policy for policy in load_policies()
+        if (sector is None or policy["sector"] == sector)
+        and (category is None or policy["category"] == category)
+        and (sub_category is None or policy["sub_category"] == sub_category)
+    ]
 
-    filters = {}
-    if sector is not None:
-        filters["sector"] = sector
-    if category is not None:
-        filters["category"] = category
-    if sub_category is not None:
-        filters["sub_category"] = sub_category
-    if filters:
-        query = query.filter_by(**filters)
-
-    total = query.count()
-
-    page_query = query.order_by(Policy.id).limit(per_page).offset((page - 1) * per_page)
-    items = [_policy_to_api_dict(policy) for policy in page_query.all()]
+    total = len(matching)
+    start = (page - 1) * per_page
+    end = start + per_page
+    items = [_policy_to_api_dict(policy) for policy in matching[start:end]]
 
     return {"items": items, "total": total}
 
@@ -109,7 +111,7 @@ def get_paginated_policies(page=1, per_page=DEFAULT_PER_PAGE,
 def get_policy_by_id(policy_id):
     """Returns the policy as an API-shaped dict (see
     _policy_to_api_dict()), or None if no policy with that id exists."""
-    policy = Policy.query.filter_by(id=policy_id).first()
+    policy = _get_policy_by_id_from_loader(policy_id)
     if policy is None:
         return None
     return _policy_to_api_dict(policy)

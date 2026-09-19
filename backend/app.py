@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import click
 from config import Config
 from database import init_db
 from auth_routes import auth_bp
@@ -97,39 +96,12 @@ def get_policies():
         return jsonify({"error": "Could not load policies"}), 500
 
 
-# Phase 7: `flask import-policies` / `flask import-policies --dry-run`.
-# Deliberately a CLI command, not an HTTP route - this is an admin/ops
-# action against data/*.json, not something the running application (or
-# an anonymous HTTP caller) should be able to trigger.
-@app.cli.command("import-policies")
-@click.option("--dry-run", is_flag=True, help="Preview the import without writing to the database.")
-def import_policies_command(dry_run):
-    from import_policies import import_policies_from_json
-
-    if not Config.DATABASE_URL:
-        click.echo("DATABASE_URL is not configured - cannot import.")
-        return
-
-    report = import_policies_from_json(dry_run=dry_run)
-
-    if report["aborted"]:
-        click.echo(f"ABORTED: {report['abort_reason']}")
-        validation = report["validation"]
-        for entry in validation["malformed_files"]:
-            click.echo(f"  malformed file: {entry}")
-        for entry in validation["missing_field_records"]:
-            click.echo(f"  missing field: {entry}")
-        for entry in validation["true_duplicates"]:
-            click.echo(f"  true duplicate (name, sector): {entry}")
-        return
-
-    mode = "DRY RUN - " if dry_run else ""
-    click.echo(
-        f"{mode}inserted={report['inserted']} updated={report['updated']} "
-        f"skipped={report['skipped']} "
-        f"(source total={report['validation']['total_records']} "
-        f"across {len(report['validation']['sectors'])} sectors)"
-    )
+# NOTE: the `flask import-policies` CLI command that previously lived here
+# has been removed - there is no PostgreSQL policies table left to import
+# into (see backend/policy_service.py's module docstring). Validating
+# data/*.json is still available via import_policies.validate_json_files()
+# if needed (e.g. in CI or manually), it just no longer writes to a
+# database.
 
 
 if __name__ == '__main__':

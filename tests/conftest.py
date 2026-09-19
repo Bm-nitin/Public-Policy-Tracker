@@ -906,51 +906,19 @@ def registration_client(db_test_app, monkeypatch):
 
 
 @pytest.fixture
-def policies_client(db_test_app, monkeypatch):
-    """Test client for GET /api/policies* (Phase 8), wired to
-    db_test_app's isolated database and pre-populated with the REAL
-    151-record dataset via the actual import pipeline
-    (import_policies_from_json against the real data/ directory) - not
-    synthetic test fixtures, so these tests exercise the real data shape
-    end to end."""
-    import os
-
-    import config
-    from import_policies import import_policies_from_json
-    from policies_routes import policies_bp
-
-    monkeypatch.setattr(config.Config, "DATABASE_URL", "sqlite:///:memory:")
-    db_test_app.register_blueprint(policies_bp)
-
-    real_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"
-    )
-    with db_test_app.app_context():
-        report = import_policies_from_json(real_data_dir)
-        assert report["aborted"] is False
-
-    with db_test_app.test_client() as client:
+def policies_client(flask_app_module):
+    """Test client for GET /api/policies* - JSON-backed (see
+    backend/policy_service.py's module docstring), so, unlike the
+    original Phase 8 version of this fixture, there is no database to
+    set up: policies_bp reads from the same process-cached
+    backend/policy_loader.py data every other consumer (the legacy
+    GET /policies route, backend/retrieval.py) already uses. Reuses the
+    shared flask_app_module (already has policies_bp registered via
+    backend/app.py) rather than building a second Flask app - there is
+    no per-test data isolation concern any more since nothing here
+    writes to shared state."""
+    with flask_app_module.app.test_client() as client:
         yield client
-
-
-@pytest.fixture
-def populated_db_app(db_test_app):
-    """db_test_app pre-populated with the REAL 151-record dataset via the
-    actual import pipeline - used by Phase 9 retrieval tests that call
-    backend/retrieval.py's functions directly (not through HTTP), so they
-    need an app context to query through but not a Flask test client."""
-    import os
-
-    from import_policies import import_policies_from_json
-
-    real_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"
-    )
-    with db_test_app.app_context():
-        report = import_policies_from_json(real_data_dir)
-        assert report["aborted"] is False
-
-    return db_test_app
 
 
 class _MockEmailRecorder(list):

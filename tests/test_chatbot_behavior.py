@@ -71,10 +71,17 @@ def test_unmatched_but_policy_related_query_falls_back_to_gemini(chatbot_module,
     monkeypatch.setattr(chatbot_module, "match_by_keywords", lambda *a, **k: (None, 0))
     monkeypatch.setattr(chatbot_module, "call_generative_ai", lambda text: "MOCKED_GEMINI_REPLY")
 
-    # Contains "insurance", a word that only appears in is_policy_related's
-    # policy_keywords set (not in any CATEGORY_KEYWORDS list), keeping the
-    # off-topic guard from firing while steps 1-3 are stubbed out above.
-    result = chatbot_module.get_response("insurance zzz qqq clarification xyz needed")
+    # Retrieval V2 (backend/retrieval.py) now runs unconditionally on
+    # every /chat request (it is JSON-backed, not database-gated - see
+    # the storage-migration report), so this query is chosen the same
+    # way tests/test_retrieval.py's falls-back-to-Gemini tests choose
+    # theirs: "policy" satisfies is_policy_related()'s off-topic guard
+    # (keeping this test isolated to steps 1-3/5, not the guard) but is
+    # itself a stopword extract_keywords() filters out before Retrieval
+    # V2 ever tokenizes for a match, and the remaining nonsense tokens
+    # match no real policy text - so Retrieval V2 genuinely finds
+    # nothing and get_response() must reach call_generative_ai().
+    result = chatbot_module.get_response("policy zzz qqq xyz blorptastic nonexistent")
     assert result == "MOCKED_GEMINI_REPLY"
 
 

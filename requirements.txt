@@ -13,7 +13,10 @@ argon2-cffi>=23.1
 psycopg[binary]>=3.1
 # Left unpinned: the google-genai SDK is young and changes quickly, and this
 # environment has no network access to verify a safe version range against
-# the code in backend/chatbot.py (client.models.generate_content(...)).
+# the code in backend/chatbot.py (client.models.generate_content(...)) or,
+# as of Phase 10, backend/embeddings.py (client.models.embed_content(...)) -
+# no separate embeddings package is needed, the same SDK/client/API key
+# cover both chat generation and embeddings.
 # Before relying on this in a new deploy, run `pip freeze` in the actual
 # target environment and pin the exact working version here.
 google-genai

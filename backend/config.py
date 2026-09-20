@@ -53,6 +53,16 @@ class Config:
     GEMINI_API_KEY = _resolve_gemini_api_key()
     GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
+    # --- Embeddings (Phase 10) ---
+    # Reuses GEMINI_API_KEY above - no separate secret. gemini-embedding-001
+    # is the current stable Gemini embedding model (text-embedding-004,
+    # used by earlier drafts of this feature, was deprecated by Google in
+    # January 2026 - see backend/embeddings.py's module docstring).
+    # EMBEDDING_DIMENSIONS defaults to 768 (Matryoshka-truncated from the
+    # model's native 3072) - see backend/embeddings.py for the tradeoff.
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")
+    EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", 768))
+
     # --- CORS ---
     CORS_ORIGINS = _resolve_cors_origins()
 

@@ -40,6 +40,16 @@ Pipeline:
 Reuses backend/policy_loader.py's cached loader rather than duplicating
 data access, and backend/utils.py's existing normalization/tokenization
 functions rather than inventing new ones or a synonym dictionary.
+
+PHASE 10 ADDITION: hybrid_retrieve() (bottom of this file) adds semantic
+search (backend/semantic_retrieval.py, embedding-based) as an optional
+second capability alongside everything above, which is entirely
+unchanged - retrieve_policies() and get_candidate_policies() still work
+exactly as they did in Phase 9, with no database, embedding, or network
+dependency whatsoever. See hybrid_retrieve()'s own docstring for the
+"controlled hybrid ranking" strategy (deterministic-first union, scores
+never blended) and for why deterministic Retrieval V2 is always the
+floor even when semantic search is fully unavailable.
 """
 
 from functools import lru_cache
@@ -292,3 +302,72 @@ def retrieve_policies(raw_query, limit=MAX_RESULTS):
         data["score"] = score
         results.append(data)
     return results
+
+
+def hybrid_retrieve(raw_query, limit=MAX_RESULTS):
+    """Phase 10's "controlled hybrid ranking": deterministic-first union,
+    never a blended/renormalized score.
+
+    Deterministic Retrieval V2's score (see TIER_BASE above) and semantic
+    search's cosine similarity (backend/semantic_retrieval.py) are
+    different, incomparable scales built for different purposes - there
+    is no principled way to average or otherwise combine them into one
+    number without an arbitrary weighting decision (the Phase 10 brief
+    explicitly forbids exactly this: "Do not combine their scores
+    arbitrarily without tests and a documented strategy"). Rather than
+    invent such a weighting, this function keeps them as two separate,
+    ordered lists and unions them positionally:
+
+      1. Run deterministic Retrieval V2 first, in full, exactly as
+         retrieve_policies() already ranks it - every result tagged
+         retrieval_source="deterministic". This is the guaranteed,
+         hierarchy-proven ranking from Phase 9; hybrid_retrieve() never
+         reorders or reweights it.
+      2. Only if that didn't fill `limit` results, semantic search
+         (backend/semantic_retrieval.py) is tried for the remainder,
+         in ITS OWN score order, skipping anything already returned by
+         step 1 (by id) - tagged retrieval_source="semantic".
+      3. If semantic search is unavailable for any reason (no
+         DATABASE_URL, no GEMINI_API_KEY, no embeddings generated yet,
+         a provider error) semantic_search() itself already returns []
+         (see that module's docstring) - hybrid_retrieve() treats that
+         identically to "semantic search found nothing" and simply
+         returns whatever deterministic Retrieval V2 found. Retrieval
+         V2 is therefore ALWAYS the floor: hybrid_retrieve() can never
+         return fewer or worse deterministic results than
+         retrieve_policies() would have on its own, only additional
+         ones semantic search can supply on top.
+
+    Every result dict gets a `retrieval_source` key so a caller can
+    always tell which system produced it - this is deliberate, not
+    incidental: silently mixing two differently-scored result sets
+    without a way to tell them apart would make the hybrid ranking's
+    behavior opaque to test and to reason about, which is exactly what
+    the "documented strategy" requirement is about.
+    """
+    deterministic_results = retrieve_policies(raw_query, limit=limit)
+    for result in deterministic_results:
+        result["retrieval_source"] = "deterministic"
+
+    if len(deterministic_results) >= (limit if isinstance(limit, int) and not isinstance(limit, bool) else 0):
+        return deterministic_results
+
+    try:
+        from semantic_retrieval import semantic_search
+    except ImportError:
+        return deterministic_results
+
+    seen_ids = {result["id"] for result in deterministic_results}
+    remaining = limit - len(deterministic_results)
+
+    semantic_results = semantic_search(raw_query, limit=limit)
+    added = []
+    for result in semantic_results:
+        if result["id"] in seen_ids:
+            continue
+        result["retrieval_source"] = "semantic"
+        added.append(result)
+        if len(added) >= remaining:
+            break
+
+    return deterministic_results + added

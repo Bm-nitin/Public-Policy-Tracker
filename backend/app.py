@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import click
 from flask_cors import CORS
 from config import Config
 from database import init_db
@@ -102,6 +103,37 @@ def get_policies():
 # data/*.json is still available via import_policies.validate_json_files()
 # if needed (e.g. in CI or manually), it just no longer writes to a
 # database.
+
+# Phase 10: `flask generate-embeddings` / `flask generate-embeddings --dry-run`.
+# CLI-only, same reasoning as the retired import-policies command above -
+# an explicit ops action, never triggered automatically (in particular,
+# never on application startup - see the Phase 10 brief's performance
+# requirement). Incremental: unchanged policies' embeddings are left
+# alone entirely (see backend/embedding_store.py's generate_embeddings()).
+@app.cli.command("generate-embeddings")
+@click.option("--dry-run", is_flag=True, help="Report what would be generated without calling the embedding provider or writing anything.")
+def generate_embeddings_command(dry_run):
+    from embedding_store import generate_embeddings
+
+    if not Config.DATABASE_URL:
+        click.echo("DATABASE_URL is not configured - cannot store embeddings.")
+        return
+    if not dry_run and not Config.GEMINI_API_KEY:
+        click.echo("GEMINI_API_KEY is not configured - cannot generate embeddings.")
+        return
+
+    report = generate_embeddings(dry_run=dry_run)
+
+    mode = "DRY RUN - " if dry_run else ""
+    click.echo(
+        f"{mode}generated={len(report['generated'])} "
+        f"skipped_unchanged={len(report['skipped_unchanged'])} "
+        f"failed={len(report['failed'])} "
+        f"(of {report['total_policies']} total policies)"
+    )
+    for entry in report["failed"]:
+        click.echo(f"  failed: policy_id={entry['policy_id']} error={entry['error']}")
+
 
 
 if __name__ == '__main__':

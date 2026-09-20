@@ -189,3 +189,63 @@ class PasswordResetToken(db.Model):
 # migrations/versions/ unchanged (removing/rewriting historical migrations
 # was explicitly out of scope) - they simply have no corresponding model
 # here any more, the same as any other retired table would.
+
+
+class PolicyEmbedding(db.Model):
+    """Phase 10: a vector SEARCH INDEX, not a second copy of policy data.
+    data/*.json (via policy_loader.py) remains the sole source of truth
+    for policy content - this table exists only so semantic search has
+    somewhere to persist embeddings between requests/restarts, isolated
+    from every authentication table above (no FK, no shared table, no
+    schema coupling) and, just as deliberately, isolated from ever
+    becoming a second Policy model: it stores nothing but an id, a
+    vector, and bookkeeping to detect staleness - never name/category/
+    sub_category/change/impact.
+
+    policy_id is a plain Integer, not a ForeignKey: there is no
+    `policies` table to reference any more (see the NOTE above), and
+    policy_id's only real "foreign key" is policy_loader.py's stable,
+    deterministically-assigned id (see that module's docstring). A
+    row here whose policy_id no longer exists in the current JSON
+    dataset (a policy was removed) is inert - it simply never gets
+    matched against any live policy - rather than being a referential-
+    integrity violation, since nothing in this schema can express that
+    constraint against a JSON file anyway.
+
+    embedding is stored as JSON text (a flat list[float]), not a
+    pgvector `vector` column - see backend/embeddings.py's module
+    docstring and the Phase 10 design report for why: this table works
+    on any PostgreSQL version/plan with zero extension dependency, and
+    at 151 rows a brute-force Python cosine-similarity scan (see
+    backend/semantic_retrieval.py) is already sub-millisecond, so
+    pgvector's ANN indexing would add a hard extension dependency for
+    zero real performance benefit at this scale. If the dataset ever
+    grows enough for that tradeoff to flip, migrating this one column
+    to pgvector's `vector` type is a schema change to this table alone
+    - not "a completely different architecture" (see the Phase 10
+    brief's own phrasing for exactly this scenario).
+
+    content_hash is a SHA-256 hex digest of the exact text that was
+    embedded (backend/embeddings.py's build_embedding_document() +
+    content_fingerprint()) - comparing this against a freshly computed
+    hash for the current JSON content is the entire staleness check
+    (see backend/embeddings.py's content_fingerprint() docstring); no
+    reference back to the JSON content itself is stored here.
+    """
+    __tablename__ = "policy_embeddings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    policy_id = db.Column(db.Integer, nullable=False, unique=True, index=True)
+    embedding = db.Column(db.Text, nullable=False)
+    embedding_dim = db.Column(db.Integer, nullable=False)
+    content_hash = db.Column(db.String(64), nullable=False)
+    model = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    def __repr__(self):
+        return f"<PolicyEmbedding policy_id={self.policy_id} model={self.model!r}>"

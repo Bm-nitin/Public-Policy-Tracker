@@ -101,6 +101,69 @@ reset password
 
 Explain Retrieval V2 at a high level.
 
+## Grounded Gemini Response Layer (Phase 11)
+
+`data/*.json` remains the single authoritative source of policy
+content - this layer never adds a second copy of policy data anywhere,
+it only decides what to show Gemini and how to phrase the question.
+
+**Flow:** `GET /api/chat`'s underlying `get_response()`
+(`backend/chatbot.py`) tries a series of fast, deterministic matches
+first (category match, direct name similarity, keyword match, then
+`hybrid_retrieve()` - deterministic Retrieval V2 plus semantic search,
+see `backend/retrieval.py`). Only when none of those find anything does
+it fall through to the grounded response layer:
+
+```
+user query
+    -> hybrid_retrieve()                         (backend/retrieval.py)
+    -> retrieved policy records
+    -> grounding context builder                 (backend/grounding.py)
+    -> Gemini 2.5 Flash, via a dedicated
+       system_instruction (never mixed with
+       user input or policy text)                (backend/gemini_service.py)
+    -> grounded response
+```
+
+Each layer has one job (`backend/chatbot.py` only orchestrates the
+call sequence and decides what to do with each outcome; it contains no
+retrieval, context-building, or Gemini-request logic of its own):
+
+- `backend/retrieval.py` - deterministic and hybrid retrieval only.
+- `backend/semantic_retrieval.py` - embedding-based semantic search only
+  (Phase 10).
+- `backend/grounding.py` - converts retrieved policy dicts into a
+  bounded, deterministic context string (`POLICY 1 / Name / Sector /
+  Category / Sub-category / Change / Impact`, one block per retrieved
+  policy, capped at 5 policies / ~6000 characters) and holds the fixed
+  grounding system instruction. Pure string logic - fully testable
+  without ever calling Gemini.
+- `backend/gemini_service.py` - the only module that actually talks to
+  Gemini for this layer, via the existing `google-genai` client and
+  `GEMINI_API_KEY`/`GEMINI_MODEL` (`gemini-2.5-flash`) configuration -
+  no second provider, no second API key.
+
+**Grounding discipline:** Gemini is told, via a dedicated
+`system_instruction` (a separate, privileged API parameter - never
+string-concatenated with the user's question or with policy content,
+so neither can override it) to answer using *only* the supplied policy
+context, never invent facts, names, dates, eligibility criteria,
+benefits, application procedures, or URLs not present in that context,
+and to say plainly when the context is insufficient. Only the fields
+that actually exist on a policy record - name, sector, category,
+sub_category, change, impact - are ever included; nothing is fabricated
+to fill out a richer-looking context.
+
+**Fallback behavior (Gemini failure must never break the chatbot):**
+- If `hybrid_retrieve()` finds nothing at all, Gemini is never called
+  with an empty context - a fixed "not enough information" message is
+  returned directly.
+- If Gemini is unavailable (no `GEMINI_API_KEY`, network/provider
+  failure, empty response, or any other error), the response falls back
+  to the same deterministic, retrieved-policy-based formatting the
+  fast-match paths already use - never a raw exception, stack trace, or
+  API key reaches the user.
+
 ## Configuration
 
 .env

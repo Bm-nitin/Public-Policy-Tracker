@@ -485,7 +485,7 @@ def test_chat_uses_retrieval_v2_for_a_real_match(monkeypatch):
     """Forces category/name-similarity/keyword-match steps to fail (same
     isolation technique as the existing Phase 0.5 Gemini-fallback test),
     then confirms get_response() uses Retrieval V2's result instead of
-    falling through to Gemini."""
+    falling through to the grounded Gemini response layer."""
     import chatbot as chatbot_module
 
     monkeypatch.setattr(chatbot_module, "detect_category", lambda text: None)
@@ -494,31 +494,42 @@ def test_chat_uses_retrieval_v2_for_a_real_match(monkeypatch):
     def _fail_if_called(*args, **kwargs):
         raise AssertionError("Gemini should not be called when Retrieval V2 finds a match")
     monkeypatch.setattr(chatbot_module, "call_generative_ai", _fail_if_called)
+    monkeypatch.setattr(chatbot_module, "get_grounded_response", _fail_if_called)
 
     result = chatbot_module.get_response("ISRO Formation Policy 1969")
 
     assert "ISRO Formation Policy, 1969" in result
 
 
-def test_chat_falls_back_to_gemini_when_retrieval_v2_finds_nothing(monkeypatch):
+def test_chat_reaches_grounded_response_layer_when_retrieval_finds_nothing(monkeypatch):
+    """ARCHITECTURE CHANGE (Phase 11): get_response()'s final fallback is
+    now get_grounded_response() (backend/chatbot.py), not the old
+    ungrounded call_generative_ai() - see
+    tests/test_grounded_responses.py for the grounded layer's own
+    dedicated tests (context building, Gemini mocking, fallback
+    behavior); this test only confirms get_response() reaches it."""
     import chatbot as chatbot_module
 
     monkeypatch.setattr(chatbot_module, "detect_category", lambda text: None)
     monkeypatch.setattr(chatbot_module, "match_by_keywords", lambda *a, **k: (None, 0))
-    monkeypatch.setattr(chatbot_module, "call_generative_ai", lambda text: "MOCKED_GEMINI_REPLY")
+    monkeypatch.setattr(chatbot_module, "get_grounded_response", lambda text: "MOCKED_GROUNDED_REPLY")
+
+    def _fail_if_called(*args, **kwargs):
+        raise AssertionError("call_generative_ai should not be called - get_grounded_response replaces it")
+    monkeypatch.setattr(chatbot_module, "call_generative_ai", _fail_if_called)
 
     # Verified empirically: "policy" triggers is_policy_related() (so
-    # this reaches the Retrieval V2 / Gemini branch at all, past the
-    # off-topic guard) but is itself a stopword extract_keywords()
+    # this reaches the retrieval / grounded-response branch at all, past
+    # the off-topic guard) but is itself a stopword extract_keywords()
     # filters out before tokenizing for retrieval, and the remaining
-    # tokens match no real policy text - so Retrieval V2 genuinely
-    # finds nothing and the code must fall through to Gemini, unlike a
-    # query merely containing common words like "insurance" (which
-    # legitimately matches real crop/health insurance policies and is
-    # correct retrieval, not a bug).
+    # tokens match no real policy text - so hybrid_retrieve() genuinely
+    # finds nothing and the code must fall through to
+    # get_grounded_response(), unlike a query merely containing common
+    # words like "insurance" (which legitimately matches real crop/
+    # health insurance policies and is correct retrieval, not a bug).
     result = chatbot_module.get_response("policy zzz qqq xyz blorptastic nonexistent")
 
-    assert result == "MOCKED_GEMINI_REPLY"
+    assert result == "MOCKED_GROUNDED_REPLY"
 
 
 def test_chat_uses_retrieval_v2_regardless_of_database_url(monkeypatch):
@@ -538,6 +549,7 @@ def test_chat_uses_retrieval_v2_regardless_of_database_url(monkeypatch):
     def _fail_if_called(*args, **kwargs):
         raise AssertionError("Gemini should not be called when Retrieval V2 finds a match")
     monkeypatch.setattr(chatbot_module, "call_generative_ai", _fail_if_called)
+    monkeypatch.setattr(chatbot_module, "get_grounded_response", _fail_if_called)
 
     result = chatbot_module.get_response("ISRO Formation Policy 1969")
     assert "ISRO Formation Policy, 1969" in result

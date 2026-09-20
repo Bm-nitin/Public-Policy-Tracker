@@ -62,27 +62,31 @@ def test_empty_query_returns_prompt_to_enter_a_question(chatbot_module):
     assert chatbot_module.get_response("   ") == "Please enter a question."
 
 
-def test_unmatched_but_policy_related_query_falls_back_to_gemini(chatbot_module, monkeypatch):
-    """Isolates step 5 by forcing steps 1-3 to fail, rather than hunting for
-    a fragile 'organically unmatched' query - the matching functions
-    already have dedicated unit tests above, so this test's job is only to
-    confirm get_response() reaches call_generative_ai() when they do."""
+def test_unmatched_but_policy_related_query_reaches_grounded_response_layer(chatbot_module, monkeypatch):
+    """ARCHITECTURE CHANGE (Phase 11): get_response()'s final fallback is
+    now get_grounded_response(), not the old ungrounded call_generative_ai()
+    (which remains defined and independently tested - see
+    tests/test_gemini_mocked.py - but get_response() no longer calls it).
+    Isolates step 5 by forcing steps 1-3 to fail, same technique as
+    before, but now asserts get_response() reaches get_grounded_response()
+    rather than call_generative_ai() directly."""
     monkeypatch.setattr(chatbot_module, "detect_category", lambda text: None)
     monkeypatch.setattr(chatbot_module, "match_by_keywords", lambda *a, **k: (None, 0))
-    monkeypatch.setattr(chatbot_module, "call_generative_ai", lambda text: "MOCKED_GEMINI_REPLY")
+    monkeypatch.setattr(chatbot_module, "get_grounded_response", lambda text: "MOCKED_GROUNDED_REPLY")
 
-    # Retrieval V2 (backend/retrieval.py) now runs unconditionally on
-    # every /chat request (it is JSON-backed, not database-gated - see
-    # the storage-migration report), so this query is chosen the same
-    # way tests/test_retrieval.py's falls-back-to-Gemini tests choose
-    # theirs: "policy" satisfies is_policy_related()'s off-topic guard
-    # (keeping this test isolated to steps 1-3/5, not the guard) but is
-    # itself a stopword extract_keywords() filters out before Retrieval
-    # V2 ever tokenizes for a match, and the remaining nonsense tokens
-    # match no real policy text - so Retrieval V2 genuinely finds
-    # nothing and get_response() must reach call_generative_ai().
+    def _fail_if_called(*args, **kwargs):
+        raise AssertionError("call_generative_ai should not be called - get_grounded_response replaces it")
+    monkeypatch.setattr(chatbot_module, "call_generative_ai", _fail_if_called)
+
+    # Same query tests/test_retrieval.py's falls-back tests use: "policy"
+    # satisfies is_policy_related()'s off-topic guard (keeping this test
+    # isolated to steps 1-3, not the guard) but is itself a stopword
+    # extract_keywords() filters out before hybrid_retrieve() ever
+    # tokenizes for a match, and the remaining nonsense tokens match no
+    # real policy text - so step 5's hybrid_retrieve() genuinely finds
+    # nothing and get_response() must reach get_grounded_response().
     result = chatbot_module.get_response("policy zzz qqq xyz blorptastic nonexistent")
-    assert result == "MOCKED_GEMINI_REPLY"
+    assert result == "MOCKED_GROUNDED_REPLY"
 
 
 def test_format_response_structure(chatbot_module):

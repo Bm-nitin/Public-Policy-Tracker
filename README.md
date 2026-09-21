@@ -164,6 +164,48 @@ to fill out a richer-looking context.
   fast-match paths already use - never a raw exception, stack trace, or
   API key reaches the user.
 
+## Persistent Chat History (Phase 12)
+
+Authenticated users can persist their conversations to PostgreSQL. This
+is layered on top of everything above it without changing any of it:
+`data/*.json` is still the only source of policy content - a persisted
+message's optional `metadata` may point at policy ids (e.g.
+`{"retrieval_mode": "hybrid", "policy_ids": [12, 45, 78]}`) but never
+duplicates a policy's name/category/change/impact into the database.
+
+**Schema:** two new tables, `conversations` (`user_id -> users.id`) and
+`messages` (`conversation_id -> conversations.id`, cascading delete),
+each with the indexes needed for their access patterns
+(`conversations.user_id`, `conversations.updated_at`,
+`messages.conversation_id`, `messages.created_at`). Nothing about
+`users`, sessions, or `policy_embeddings` changed.
+
+**Ownership model:** every endpoint requires a valid session
+(`sessions.login_required` - the same mechanism `/api/auth/me` already
+uses) and re-verifies, on every single request, that the requesting
+user owns the conversation being accessed - never trusting a
+conversation id supplied by the client beyond "look this up and check
+who it belongs to." A conversation that doesn't exist and one that
+belongs to someone else are always indistinguishable from the outside
+(both a plain 404), so the API never reveals whether another user's
+conversation exists.
+
+**Endpoints** (all under `/api/conversations`, all authenticated):
+`POST /` (create - optional `title`, or a `first_message` to derive one
+from, deterministically, without a Gemini call), `GET /` (paginated,
+newest-updated-first), `GET /<id>`, `DELETE /<id>`, `GET /<id>/messages`
+(paginated, oldest-first), `POST /<id>/messages` (`role` restricted to
+`user`/`assistant`; validated length; optional lightweight `metadata`).
+
+**`/chat` integration:** unchanged when no `conversation_id` is sent in
+the body (the entire pre-Phase-12 contract) - still stateless,
+unauthenticated, identical response shape. Sending an owned
+`conversation_id` persists both the user's message and the assistant's
+reply to it; a missing/unowned one returns 401/404 rather than silently
+falling back to stateless behavior. A database error while persisting
+never blocks the reply itself - the chat answer is still generated and
+returned even if saving it fails.
+
 ## Configuration
 
 .env

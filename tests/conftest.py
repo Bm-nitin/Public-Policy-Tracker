@@ -171,10 +171,31 @@ except ImportError:
                 return other_type
             return self
 
+    class _ShimForeignKey:
+        """Real SQLAlchemy: db.ForeignKey("users.id", ondelete="CASCADE").
+        This shim never enforces the constraint at the SQL level (its
+        physical backend is a bare sqlite connection, and nothing here
+        turns PRAGMA foreign_keys on) - application code (see
+        backend/conversations_routes.py) must not rely on the database
+        to reject an orphaned row; ownership/existence checks happen at
+        the query layer regardless of whether the underlying database
+        would also enforce it. This class exists so `db.Column(...,
+        db.ForeignKey(...), ...)` - completely ordinary, correct
+        SQLAlchemy - can be imported and collected here at all, matching
+        every other shim class in this file (see its own module note).
+        `ondelete` is stored but not acted on for the same reason."""
+
+        def __init__(self, target, ondelete=None):
+            self.target = target
+            self.ondelete = ondelete
+
     class _ShimColumn:
-        def __init__(self, col_type, primary_key=False, unique=False,
+        def __init__(self, col_type, *extra, primary_key=False, unique=False,
                      nullable=True, default=None, onupdate=None, index=False):
             self.col_type = col_type
+            self.foreign_key = next(
+                (item for item in extra if isinstance(item, _ShimForeignKey)), None
+            )
             self.primary_key = primary_key
             self.unique = unique
             # A primary key is implicitly NOT NULL, same as real
@@ -308,6 +329,23 @@ except ImportError:
                 params,
             )
             return cur.fetchone()[0]
+
+        def delete(self):
+            """Bulk conditional DELETE, mirroring real SQLAlchemy's
+            Query.delete(): executes a DELETE ... WHERE <filters>
+            immediately (within the current sqlite3 transaction - still
+            needs an explicit session.commit() afterward, same as
+            .update() above) and returns the number of rows deleted.
+            Used by backend/conversations_service.py's
+            delete_conversation() to remove every message belonging to a
+            conversation in one statement, rather than loading each
+            Message object individually just to delete it."""
+            where_sql, params = self._where_clause()
+            cur = self.conn.execute(
+                f"DELETE FROM {self.model_cls.__tablename__} WHERE {where_sql}",
+                params,
+            )
+            return cur.rowcount
 
         def update(self, values):
             """Bulk conditional UPDATE, mirroring real SQLAlchemy's
@@ -459,6 +497,33 @@ except ImportError:
         def add(self, obj):
             self._pending.append(obj)
 
+        def delete(self, obj):
+            """Deletes a single already-persisted object by primary key,
+            mirroring real SQLAlchemy's Session.delete(obj). Executed
+            immediately against the sqlite connection (not deferred to
+            flush/commit, unlike .add()'s pending-insert/update queue) -
+            simpler to implement correctly and sufficient for this app's
+            actual usage (backend/conversations_service.py's
+            delete_conversation() deletes one Conversation row this way,
+            after already bulk-deleting its Messages via Query.delete()
+            above); still requires an explicit session.commit() to
+            persist, exactly like every other write in this shim."""
+            cls = type(obj)
+            pk_col_name = next(
+                (name for name, col in cls.__columns__.items() if col.primary_key),
+                None,
+            )
+            pk_value = getattr(obj, pk_col_name, None) if pk_col_name else None
+            if pk_value is None:
+                # Never persisted in the first place - nothing to delete,
+                # matching real SQLAlchemy's behavior for a transient
+                # object passed to session.delete().
+                return
+            self._db._conn.execute(
+                f"DELETE FROM {cls.__tablename__} WHERE {pk_col_name} = ?",
+                [pk_value],
+            )
+
         def _insert_pending(self):
             """Executes INSERT for new objects (no primary key yet) and
             UPDATE for already-persisted objects (primary key already
@@ -545,11 +610,30 @@ except ImportError:
             self._pending = []
             self._db._conn.rollback()
 
+        def expire_all(self):
+            """No-op here: this shim's Query.first()/.all() always
+            construct a brand-new Python object straight from a fresh
+            SELECT (see _ShimQuery._execute() above) - there is no
+            identity map for expire_all() to have anything to do,
+            because there is nothing this shim ever returns that could
+            BE stale in the first place. This is a real, documented gap
+            between this shim and real SQLAlchemy (which DOES cache
+            already-loaded objects by primary key and can return stale
+            attribute data for them - see
+            backend/conversations_service.py's add_message() docstring
+            for a concrete case this caused) - defined here only so
+            calling db.session.expire_all() against this shim doesn't
+            raise AttributeError; it provides no equivalent test
+            coverage for whatever expire_all() is being relied on to
+            fix. Real coverage for that class of bug can only come from
+            running against real SQLAlchemy."""
+
     class _OfflineFakeSQLAlchemy:
         def __init__(self, *args, **kwargs):
             self._conn = None
             self.session = None
             self.Column = _ShimColumn
+            self.ForeignKey = _ShimForeignKey
             self.Integer = _ShimColType("INTEGER")
             self.BigInteger = _ShimColType("BIGINT")
             self.String = lambda length=None: _ShimColType("TEXT", length=length)

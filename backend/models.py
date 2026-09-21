@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 from database import db
 from verification_tokens import ensure_aware_utc
+import json
 
 
 def _utcnow():
@@ -249,3 +250,105 @@ class PolicyEmbedding(db.Model):
 
     def __repr__(self):
         return f"<PolicyEmbedding policy_id={self.policy_id} model={self.model!r}>"
+
+
+MAX_TITLE_LENGTH = 200
+MAX_MESSAGE_CONTENT_LENGTH = 8000
+ALLOWED_MESSAGE_ROLES = ("user", "assistant")
+
+
+class Conversation(db.Model):
+    """Phase 12 - one persisted chat history thread, owned by exactly one
+    User. Deliberately does not store or duplicate any policy content -
+    see Message.metadata_json's docstring for the same discipline applied
+    to individual messages. `user_id` has no ORM-level cascade configured
+    (deleting a User does not currently delete their conversations - out
+    of scope for this phase, which only asked for conversation-delete-
+    cascades-messages; see Message's FK for that one). Ownership is
+    always re-checked at the query layer in
+    backend/conversations_routes.py (see that module's docstring) - the
+    FK constraint here is a data-integrity backstop, never the
+    authorization mechanism itself."""
+    __tablename__ = "conversations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    title = db.Column(db.String(MAX_TITLE_LENGTH), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow,
+        onupdate=_utcnow, index=True,
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f"<Conversation id={self.id} user_id={self.user_id}>"
+
+
+class Message(db.Model):
+    """Phase 12 - one message within a Conversation. `role` is
+    constrained to models.ALLOWED_MESSAGE_ROLES at the application layer
+    (backend/conversations_routes.py validates before ever constructing
+    a Message - see that module) rather than a DB-level CHECK constraint,
+    matching this codebase's existing validation style (e.g.
+    backend/policies_routes.py's pagination parameter validation) and
+    keeping this portable across the offline test shim, which has no
+    CHECK-constraint support, and real PostgreSQL alike.
+
+    `metadata_json` (mapped from the conceptual "metadata" field the
+    Phase 12 brief describes) is stored as a JSON-encoded TEXT column,
+    same representation choice as PolicyEmbedding.embedding - plain,
+    portable, no JSON column type dependency. It is for LIGHTWEIGHT,
+    non-authoritative bookkeeping only (e.g. {"retrieval_mode": "hybrid",
+    "policy_ids": [12, 45, 78]} - which policies informed an assistant
+    reply) - it must never contain a duplicated copy of policy content
+    (name/category/sub_category/change/impact). data/*.json via
+    backend/policy_loader.py remains the only source of truth for that;
+    a policy_id here is only ever meaningful as a pointer back to it, and
+    a stale/missing id (a policy later removed from the JSON dataset) is
+    inert here for exactly the same reason it's inert for PolicyEmbedding
+    - see that model's docstring."""
+    __tablename__ = "messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(
+        db.Integer, db.ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    role = db.Column(db.String(20), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+    metadata_json = db.Column(db.Text, nullable=True)
+
+    def to_dict(self):
+        metadata = None
+        if self.metadata_json:
+            try:
+                metadata = json.loads(self.metadata_json)
+            except (TypeError, ValueError):
+                # Never let a malformed stored value break a listing -
+                # see conversations_routes.py's write-side validation,
+                # which is what actually prevents this from happening
+                # for any row written through the API; this is only a
+                # defensive read-side fallback.
+                metadata = None
+        return {
+            "id": self.id,
+            "conversation_id": self.conversation_id,
+            "role": self.role,
+            "content": self.content,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "metadata": metadata,
+        }
+
+    def __repr__(self):
+        return f"<Message id={self.id} conversation_id={self.conversation_id} role={self.role!r}>"

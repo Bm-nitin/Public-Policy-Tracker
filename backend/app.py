@@ -5,6 +5,7 @@ from config import Config
 from database import init_db
 from auth_routes import auth_bp
 from policies_routes import policies_bp
+from conversations_routes import conversations_bp
 from chatbot import get_response
 from policy_loader import load_policies
 import traceback
@@ -46,6 +47,16 @@ app.register_blueprint(auth_bp)
 # replace the existing GET /policies (JSON-backed) route below.
 app.register_blueprint(policies_bp)
 
+# Phase 12: authenticated persistent chat history (POST/GET
+# /api/conversations, GET/DELETE /api/conversations/<id>, GET/POST
+# /api/conversations/<id>/messages). Every route requires a valid
+# session (sessions.login_required) - registering the blueprint itself
+# is always safe; a request without a database configured will fail
+# inside sessions.get_current_user() (returns None - see that
+# function's docstring) and get a normal 401, same as any other
+# unauthenticated request, never a crash.
+app.register_blueprint(conversations_bp)
+
 
 # Health check
 @app.route('/health')
@@ -62,6 +73,43 @@ def home():
 # Chat API
 @app.route('/chat', methods=['POST'])
 def chat():
+    """
+    ARCHITECTURE CHANGE (Phase 12, documented per that phase's
+    requirement): /chat now accepts an OPTIONAL `conversation_id` in the
+    request body. Nothing else about this endpoint's contract changed:
+
+      - No `conversation_id` in the body (the entire pre-Phase-12
+        contract - every existing frontend/test call): behavior is
+        byte-for-byte unchanged - stateless, unauthenticated, no
+        persistence attempted, response shape identical. This is the
+        Phase 12 brief's explicitly sanctioned "preserve the existing
+        stateless behavior" option, chosen over "always create a new
+        conversation" specifically so this remains true.
+      - `conversation_id` supplied: the request must be authenticated
+        (a valid session cookie - see sessions.get_current_user()) and
+        must own that conversation, or this returns 401/404 exactly as
+        /api/conversations/<id> does (see conversations_routes.py) -
+        never silently falls back to stateless behavior for a bad or
+        unauthorized id, which would look like a successful save that
+        never happened. On success, the user's message and the
+        assistant's reply are both persisted to that conversation
+        (backend/conversations_service.py's add_message() - the exact
+        same function and ownership/validation path
+        POST /api/conversations/<id>/messages uses).
+
+    A database-write failure while persisting (as opposed to an
+    ownership/auth failure) never breaks the chat response itself - the
+    reply the user asked for is still generated and returned; only the
+    persistence step is skipped and logged server-side (see the two
+    inner try/except blocks below). get_response() itself never raises
+    (every internal failure - retrieval, grounding, Gemini - already
+    degrades to a safe fallback string within it; see
+    backend/chatbot.py's get_grounded_response()), so "assistant
+    generation fails" in the sense of persisting a fabricated message
+    cannot happen here: whatever get_response() returns is persisted
+    as-is, exactly what was actually returned to the user, never
+    anything else.
+    """
     try:
         data = request.get_json()
 
@@ -73,11 +121,47 @@ def chat():
         if not user_input.strip():
             return jsonify({"reply": "Empty message"}), 400
 
+        conversation_id_raw = data.get('conversation_id')
+        conversation = None
+        current_user = None
+
+        if conversation_id_raw is not None:
+            from sessions import get_current_user
+            current_user = get_current_user()
+            if current_user is None:
+                return jsonify({"error": "Authentication required"}), 401
+
+            try:
+                conversation_id = int(conversation_id_raw)
+            except (TypeError, ValueError):
+                return jsonify({"error": "Invalid conversation_id"}), 400
+
+            from conversations_service import ConversationNotFoundError, get_owned_conversation
+            try:
+                conversation = get_owned_conversation(current_user.id, conversation_id)
+            except ConversationNotFoundError:
+                return jsonify({"error": "Conversation not found"}), 404
+
+            try:
+                from conversations_service import add_message
+                add_message(current_user.id, conversation.id, "user", user_input)
+            except Exception:
+                # Never let a persistence problem block the reply itself -
+                # see the docstring above. Logged server-side only.
+                traceback.print_exc()
+
         print(f"[INPUT] {user_input}")
 
         result = get_response(user_input)
 
         print(f"[OUTPUT] {result}")
+
+        if conversation is not None:
+            try:
+                from conversations_service import add_message
+                add_message(current_user.id, conversation.id, "assistant", result)
+            except Exception:
+                traceback.print_exc()
 
         return jsonify({"reply": result})
 

@@ -206,6 +206,35 @@ falling back to stateless behavior. A database error while persisting
 never blocks the reply itself - the chat answer is still generated and
 returned even if saving it fails.
 
+## Saved (Bookmarked) Policies (Phase 13)
+
+Authenticated users can bookmark policies. Exactly like Phase 10's
+`policy_embeddings` and Phase 12's `messages.metadata`, PostgreSQL here
+stores only a *relationship* - `saved_policies` has no name/category/
+sub_category/change/impact column at all, so there is nothing to
+duplicate or let go stale relative to `data/*.json`. Every read
+resolves `policy_id` against the current JSON dataset at request time,
+so a saved policy's displayed details always reflect the live dataset.
+
+**Schema:** `saved_policies` (`id`, `user_id -> users.id`, `policy_id`
+- no FK, same reasoning as `policy_embeddings.policy_id` - there is no
+`policies` table to reference, `created_at`), with a genuine
+`UNIQUE(user_id, policy_id)` database constraint (not just an
+application-level check) preventing duplicate saves, enforced at both
+layers: an app-level pre-check for the common case, and the
+database constraint itself as the actual source of truth for the race-
+condition window between a check and an insert - saving a policy twice
+resolves idempotently to the existing bookmark rather than erroring.
+
+**Endpoints** (all under `/api/saved-policies`, all authenticated):
+`POST /` (body: `{"policy_id": 42}`; 404 if that id has no current
+policy; returns the bookmark plus current policy data), `GET /`
+(paginated, newest-saved-first), `GET /<policy_id>`, `DELETE
+/<policy_id>` (deletes only the caller's own relationship - another
+user's bookmark for the same policy is untouched). Ownership always
+comes from the authenticated session, never from the request body - a
+client-supplied `user_id` has no effect.
+
 ## Configuration
 
 .env

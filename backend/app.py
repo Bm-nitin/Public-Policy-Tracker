@@ -6,6 +6,7 @@ from database import init_db
 from auth_routes import auth_bp
 from policies_routes import policies_bp
 from conversations_routes import conversations_bp
+from saved_policies_routes import saved_policies_bp
 from chatbot import get_response
 from policy_loader import load_policies
 import traceback
@@ -56,6 +57,13 @@ app.register_blueprint(policies_bp)
 # function's docstring) and get a normal 401, same as any other
 # unauthenticated request, never a crash.
 app.register_blueprint(conversations_bp)
+
+# Phase 13: authenticated saved/bookmarked policies (POST/GET
+# /api/saved-policies, GET/DELETE /api/saved-policies/<policy_id>).
+# Same always-safe-to-register pattern as conversations_bp above -
+# every route requires login, so an unconfigured database just yields
+# a normal 401 via sessions.get_current_user(), never a crash.
+app.register_blueprint(saved_policies_bp)
 
 
 # Health check

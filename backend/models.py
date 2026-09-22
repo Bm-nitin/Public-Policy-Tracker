@@ -352,3 +352,52 @@ class Message(db.Model):
 
     def __repr__(self):
         return f"<Message id={self.id} conversation_id={self.conversation_id} role={self.role!r}>"
+
+
+class SavedPolicy(db.Model):
+    """Phase 13 - a bookmark: "this user saved this policy", nothing
+    more. Exactly like PolicyEmbedding (Phase 10) and Message.metadata_json
+    (Phase 12), this table stores ONLY a relationship/pointer, never a
+    copy of policy content - data/*.json (via backend/policy_loader.py /
+    backend/policy_service.py) remains the sole source of truth for
+    name/category/sub_category/change/impact. backend/saved_policies_service.py
+    always resolves policy_id against the CURRENT JSON data at read
+    time, never against anything cached here, so a saved policy's
+    displayed details automatically stay in sync with the JSON dataset
+    (including reflecting an edit to that policy's data, or - see that
+    module's docstring - going stale/absent if the policy is later
+    removed from the JSON entirely).
+
+    policy_id is a plain Integer, not a ForeignKey - same reasoning as
+    PolicyEmbedding.policy_id (see that model's docstring): there is no
+    `policies` table any more to reference, and this column's only real
+    "foreign key" is policy_loader.py's stable, deterministically-
+    assigned id.
+
+    The (user_id, policy_id) unique constraint is the actual
+    duplicate-prevention mechanism at the database level - genuinely
+    enforced, not just documentation (see
+    backend/saved_policies_service.py's save_policy() for how
+    application code handles a race that reaches this constraint
+    anyway, and tests/conftest.py's _ShimUniqueConstraint, which already
+    enforces composite UNIQUE constraints for this same reason the
+    now-retired Policy(name, sector) constraint needed to)."""
+    __tablename__ = "saved_policies"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "policy_id", name="uq_saved_policies_user_policy"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    policy_id = db.Column(db.Integer, nullable=False, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "policy_id": self.policy_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f"<SavedPolicy id={self.id} user_id={self.user_id} policy_id={self.policy_id}>"

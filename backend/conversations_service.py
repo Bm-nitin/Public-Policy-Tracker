@@ -20,6 +20,7 @@ user's conversation exists" requirement).
 """
 
 import json
+from datetime import timedelta
 
 from database import db
 from models import (
@@ -30,6 +31,7 @@ from models import (
     Message,
     _utcnow,
 )
+from verification_tokens import ensure_aware_utc
 
 DEFAULT_CONVERSATIONS_PER_PAGE = 20
 MAX_CONVERSATIONS_PER_PAGE = 100
@@ -233,50 +235,77 @@ def add_message(user_id, conversation_id, role, content, metadata=None):
     commit, so a caller never observes a message written without its
     parent conversation's updated_at also having moved.
 
-    ROOT CAUSE (this is the THIRD version of this function - see git
-    history for the first two attempts, both of which reproduced the
-    exact same symptom against real PostgreSQL/SQLAlchemy, which is what
-    ruled out onupdate=_utcnow as the cause: a bulk, Core-level
-    Query.update({...}) call - used by both prior attempts, and kept
-    here - never invokes a column's Python-side onupdate default in the
-    first place, for ANY column present in its values dict; that is
-    documented SQLAlchemy Core behavior, not something that can be
-    "sometimes" true, so onupdate could not have been silently
-    reappearing as the culprit in the second attempt either):
+    ROOT CAUSE, NOW CONFIRMED (this is the FIFTH version of this
+    function - see git history for the previous four; the fourth's own
+    monotonic-timestamp fix was correct in principle but crashed
+    outright with `TypeError: can't compare offset-naive and
+    offset-aware datetimes` the moment real PostgreSQL/SQLAlchemy on
+    Windows actually exercised it):
 
-    Query.update() executes a real UPDATE statement immediately, but it
-    is a *bulk*, Core-level operation - it writes directly to the
-    database WITHOUT going through the ORM's normal per-instance
-    flush/attribute-tracking path, and critically, it does NOT
-    automatically refresh any Conversation object that happens to
-    already be loaded in this session's identity map (here, that is
-    exactly `conversation`, returned by get_owned_conversation() a few
-    lines above - and, depending on how this session came to exist,
-    potentially other already-loaded Conversation objects too, e.g. one
-    a caller queried earlier in the same request/app context, or - a
-    documented Flask-SQLAlchemy footgun - one from what looked like an
-    unrelated earlier request, if its scoped-session key ever collides).
-    Any subsequent read that hits that identity map instead of a fresh
-    SELECT - e.g. this same `conversation` object, or a later
-    `Conversation.query...first()` call that matches the same primary
-    key - returns the object AS IT WAS BEFORE this bulk update, even
-    though the actual database row was already correctly rewritten.
-    This is exactly the previous versions' observed symptom: the
-    "reloaded" value compared bit-for-bit equal to the value captured
-    before add_message() ran, because it was, literally, the same
-    Python object's same unrefreshed attribute - not because the UPDATE
-    never reached the database.
+    SQLite - this project's own test database (tests/conftest.py's
+    db_test_app fixture uses "sqlite:///:memory:"; this is real
+    SQLAlchemy against a real sqlite3 driver in that environment, not
+    this repository's offline shim) - has no native timezone-aware
+    storage. A column declared DateTime(timezone=True) still round-trips
+    through it, but SQLAlchemy's sqlite dialect does not restore tzinfo
+    on read: a value written as timezone-aware UTC comes back
+    timezone-NAIVE the next time it's queried fresh from the database
+    (PostgreSQL, this app's real production database, does not have
+    this limitation and returns the offset correctly - this is
+    SQLite-specific). This exact behavior - some Conversation.updated_at
+    reads coming back naive, others (freshly computed via _utcnow(),
+    never round-tripped) staying aware - is also the real explanation
+    for every previous version's "identical microsecond timestamps"
+    symptom: Conversation.query.filter_by(...).first() calls throughout
+    this module (get_owned_conversation() included) return the
+    naive-on-SQLite value, so a caller comparing two such reads was
+    never actually comparing what it thought it was.
 
-    The fix: db.session.expire_all() immediately after the bulk update
-    (and its commit) - SQLAlchemy's own documented remedy for exactly
-    this Query.update()-vs-identity-map interaction. It marks every
-    object already loaded in this session as expired, so the NEXT
-    access to any of their attributes - or the next query matching
-    their primary key - is forced to issue a real SELECT rather than
-    return cached, pre-update data. See
-    tests/test_chat_history.py's test_add_message_bumps_conversation_updated_at()
-    and test_conversation_listing_uses_id_desc_tiebreak_for_equal_updated_at()
-    for the regression coverage.
+    The fix: ensure_aware_utc() (backend/verification_tokens.py) -
+    already this codebase's established remedy for exactly this pattern
+    (see backend/auth_routes.py's token-expiry checks) - normalizes
+    conversation.updated_at before it is ever compared against a fresh
+    _utcnow() value. Every datetime this application writes is already
+    UTC (see models._utcnow()), so a naive value read back always means
+    "naive but actually UTC" - safe to reattach tzinfo=utc directly,
+    never a guess. With both sides guaranteed timezone-aware, the
+    monotonic-advancement logic below (introduced in the fourth version,
+    unchanged here) works as designed: if the freshly-computed timestamp
+    isn't STRICTLY later than the conversation's current updated_at
+    (whether from genuine clock-resolution coarseness or, now that the
+    TypeError is gone, the ordinary case of comparing two valid aware
+    datetimes), advance by the smallest possible increment - one
+    microsecond - past the current value instead. This guarantees
+    monotonic advancement deterministically, on every platform, database
+    backend, and clock resolution, without ever sleeping (the Phase 12
+    brief that first reported this bug explicitly forbids sleep()-based
+    fixes for exactly this reason: they trade a reproducible bug for an
+    unreproducible flake under different timing).
+
+    backend/models.py's to_dict() methods received the same
+    ensure_aware_utc() treatment (via that module's _iso() helper) for
+    the same underlying reason, applied to serialization rather than
+    comparison: an API response's timestamp must never silently omit
+    its UTC offset depending on which database backend happened to
+    handle the request (see the Phase 14 brief's explicit "do not
+    introduce naive datetime handling" requirement, which this bug
+    would otherwise have quietly violated for every conversation/
+    message/saved-policy/user timestamp this application returns, not
+    just the one this function writes).
+
+    See tests/test_chat_history.py's
+    test_add_message_bumps_conversation_updated_at() and
+    test_add_message_advances_updated_at_even_when_clock_does_not() for
+    the regression coverage - the latter forces the exact failure
+    condition directly (a mocked _utcnow() returning a value equal to
+    the conversation's current updated_at) so it does not depend on
+    reproducing either the clock-coarseness or the naive/aware
+    discrepancy for real.
+
+    db.session.expire_all() is kept below - correct, harmless practice
+    for any future caller that might reuse `conversation` (or any other
+    already-loaded object) after this bulk update, even though it was
+    never itself the fix for either of this function's two real bugs.
     """
     clean_role = _validate_role(role)
     clean_content = _validate_content(content)
@@ -291,15 +320,18 @@ def add_message(user_id, conversation_id, role, content, metadata=None):
     db.session.add(message)
 
     now = _utcnow()
+    current_updated_at = ensure_aware_utc(conversation.updated_at) if conversation.updated_at is not None else None
+    if current_updated_at is not None and now <= current_updated_at:
+        # Clock resolution wasn't fine enough to distinguish "now" from
+        # the conversation's current updated_at - advance by the
+        # smallest possible increment instead of trusting the clock.
+        # See docstring above.
+        now = current_updated_at + timedelta(microseconds=1)
     Conversation.query.filter_by(id=conversation.id).update({"updated_at": now})
 
     db.session.commit()
-
-    # See docstring above: clears identity-map staleness left behind by
-    # the bulk update, for THIS session, going forward.
     db.session.expire_all()
 
-    return message
     return message
 
 

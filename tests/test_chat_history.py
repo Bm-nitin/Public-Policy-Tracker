@@ -409,6 +409,51 @@ def test_add_message_bumps_conversation_updated_at(history_app):
         assert reloaded.updated_at > original_updated_at
 
 
+def test_add_message_advances_updated_at_even_when_clock_does_not(history_app, monkeypatch):
+    """Deterministic, platform-independent regression test for the
+    real root cause (see conversations_service.py's add_message()
+    docstring, fifth version): a coarse system clock returning the
+    SAME value for two _utcnow() calls a few statements apart - observed
+    for real on Windows, not reproducible in this offline sandbox (its
+    clock has plenty of resolution), and not something this test should
+    depend on genuinely reproducing either. Instead, it forces the exact
+    failure condition directly - _utcnow() returning a value equal to
+    (not just close to) the conversation's current updated_at - and
+    proves add_message() still advances it, deterministically, with no
+    reliance on real elapsed wall-clock time and no sleep()."""
+    import conversations_service as cs
+    from database import db
+    from models import Conversation, User
+    from verification_tokens import ensure_aware_utc
+
+    with history_app.app_context():
+        user = User(name="T", email="clockstuck@example.com", password_hash="x", email_verified=True)
+        db.session.add(user)
+        db.session.commit()
+
+        conversation = cs.create_conversation(user.id, title="Test")
+        # Normalized the same way add_message() itself normalizes any
+        # value read back from the database (see that function's
+        # docstring) - conversation.updated_at can itself already be
+        # timezone-naive here under SQLite (Conversation's identity-map
+        # entry was expired by the commit() above, so this attribute
+        # access re-queries the database fresh). The mock below must
+        # return what a real _utcnow() call always returns - a
+        # timezone-AWARE datetime - or this test would be asserting a
+        # contract real _utcnow() never actually violates.
+        original_updated_at = ensure_aware_utc(conversation.updated_at)
+
+        # Force the exact failure condition: _utcnow() returns EXACTLY
+        # what the conversation's updated_at already is, simulating a
+        # clock that hasn't ticked forward at all between the two calls.
+        monkeypatch.setattr(cs, "_utcnow", lambda: original_updated_at)
+
+        cs.add_message(user.id, conversation.id, "user", "hello")
+
+        reloaded = Conversation.query.filter_by(id=conversation.id).first()
+        assert ensure_aware_utc(reloaded.updated_at) > original_updated_at
+
+
 def test_conversation_listing_uses_id_desc_tiebreak_for_equal_updated_at(history_app):
     """Isolates the tiebreak rule itself from any timing dependency: two
     conversations are given the EXACT SAME updated_at directly (not

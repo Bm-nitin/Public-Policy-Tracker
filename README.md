@@ -235,6 +235,48 @@ user's bookmark for the same policy is untouched). Ownership always
 comes from the authenticated session, never from the request body - a
 client-supplied `user_id` has no effect.
 
+## Dashboard (Phase 14)
+
+A single authenticated endpoint aggregating a user's existing data -
+**no new database table**: every value is read from `users`,
+`conversations`, `messages`, and `saved_policies` (Phases 3, 12, 13) or
+resolved from `data/*.json`, never duplicated anywhere.
+
+**`GET /api/dashboard`** (requires login, same session mechanism as
+every other authenticated endpoint). Identity always comes from
+`g.current_user.id` - a `user_id` in the query string is read nowhere
+in the route and has no effect.
+
+Response:
+```json
+{
+  "user": {"id": ..., "name": ..., "email": ..., "email_verified": ..., "created_at": ...},
+  "stats": {"saved_policies": ..., "conversations": ..., "messages": ...},
+  "recent_saved_policies": [{"id": ..., "policy_id": ..., "created_at": ..., "policy": {...current JSON fields...}}],
+  "recent_conversations": [{"id": ..., "title": ..., "created_at": ..., "updated_at": ..., "message_count": ...}],
+  "recent_activity": [{"type": "policy_saved" | "conversation_created" | "message_sent", "created_at": ..., "reference_id": ...}]
+}
+```
+`password_hash` and every session/verification/reset-token table are
+never read by this endpoint at all. `recent_activity` never includes
+message content - only its type, timestamp, and id.
+
+**Limits:** optional `?saved_limit=`, `?conversation_limit=`,
+`?activity_limit=` query params - default 5 (5/5/10 for saved policies/
+conversations/activity respectively), maximum 20, rejecting zero,
+negative, and malformed values with a clean 400.
+
+**JSON source of truth:** `recent_saved_policies` resolves each policy
+against the current `data/*.json` load on every request - a stale or
+since-edited policy is never returned from a cached copy, and a saved
+policy whose JSON entry was removed entirely is silently omitted from
+the list (the underlying bookmark itself is untouched and still
+deletable via Phase 13's API).
+
+**Authorization:** every query is scoped to the authenticated user's
+own rows - another user's saved policies, conversations, messages, and
+counts are never visible, regardless of what a client sends.
+
 ## Configuration
 
 .env

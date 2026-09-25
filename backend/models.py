@@ -25,6 +25,34 @@ def _utcnow():
     return datetime.now(timezone.utc)
 
 
+def _iso(value):
+    """datetime -> ISO-8601 string, always with an explicit UTC offset -
+    never None.isoformat() (guarded by the caller) and never a naive,
+    offset-less string. Every to_dict() in this module that serializes a
+    timestamp goes through this rather than calling .isoformat()
+    directly.
+
+    Root cause this guards against: SQLite (used by this project's own
+    test suite - see tests/conftest.py's db_test_app fixture, and
+    ensure_aware_utc()'s own docstring in verification_tokens.py) has no
+    native timezone-aware storage, so a real SQLAlchemy query - not this
+    project's offline shim, real SQLAlchemy - can return a value that
+    came back timezone-NAIVE for a column declared DateTime(timezone=True)
+    even though PostgreSQL (this app's real production database) stores
+    and returns the offset correctly. Every datetime this application
+    ever writes is already UTC (see _utcnow() above and
+    generate_verification_token()) - a naive value read back always
+    means "naive but actually UTC", so ensure_aware_utc() normalizes it
+    on the way to being serialized, exactly as backend/auth_routes.py
+    already relies on it doing for expiry comparisons. Without this,
+    an API response's timestamp could silently omit its UTC offset
+    depending on which database backend happened to be handling the
+    request - a real violation of "timestamps must be timezone-aware"
+    that a comparison-only fix (e.g. only inside
+    conversations_service.add_message()) would not catch."""
+    return ensure_aware_utc(value).isoformat()
+
+
 class User(db.Model):
     __tablename__ = "users"
 
@@ -286,8 +314,8 @@ class Conversation(db.Model):
         return {
             "id": self.id,
             "title": self.title,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": _iso(self.created_at) if self.created_at else None,
+            "updated_at": _iso(self.updated_at) if self.updated_at else None,
         }
 
     def __repr__(self):
@@ -346,7 +374,7 @@ class Message(db.Model):
             "conversation_id": self.conversation_id,
             "role": self.role,
             "content": self.content,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": _iso(self.created_at) if self.created_at else None,
             "metadata": metadata,
         }
 
@@ -396,7 +424,7 @@ class SavedPolicy(db.Model):
         return {
             "id": self.id,
             "policy_id": self.policy_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": _iso(self.created_at) if self.created_at else None,
         }
 
     def __repr__(self):

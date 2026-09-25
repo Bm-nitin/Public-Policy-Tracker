@@ -213,6 +213,21 @@ except ImportError:
             is bound, never interpolated into the SQL string itself)."""
             return _ShimBinaryExpression(f"LOWER({self.name}) LIKE LOWER(?)", [pattern])
 
+        def in_(self, values):
+            """Real SQLAlchemy: Model.column.in_([1, 2, 3]) - used by
+            backend/dashboard_service.py to count/fetch a user's
+            messages in one query across all of that user's conversation
+            ids, rather than one query per conversation (see that
+            module's docstring on avoiding N+1 queries). An empty
+            `values` produces a clause that matches nothing (real
+            SQLAlchemy's own documented behavior for Column.in_([])) -
+            not a SQL syntax error from an empty IN ()."""
+            values = list(values)
+            if not values:
+                return _ShimBinaryExpression("1=0", [])
+            placeholders = ", ".join("?" for _ in values)
+            return _ShimBinaryExpression(f"{self.name} IN ({placeholders})", values)
+
     _MODEL_REGISTRY = []
 
     class _ShimQuery:

@@ -277,6 +277,28 @@ deletable via Phase 13's API).
 own rows - another user's saved policies, conversations, messages, and
 counts are never visible, regardless of what a client sends.
 
+## Dashboard Page (Phase 15)
+
+`frontend/dashboard.html` (+ `dashboard.css`, `dashboard.js`) is the signed-in
+dashboard UI. It is a static page on the existing shared shell and calls only
+the Phase 14 endpoint, `GET /api/dashboard`, with `credentials: "include"` so
+the HttpOnly session cookie is sent. The page holds no account state of its
+own: a `401` redirects to `login.html?next=dashboard.html` (auth.js honours
+only that exact allowlisted value), and any other failure shows a generic
+error with a Retry button.
+
+It shows the user header, the three totals, recent saved policies, recent
+conversations and recent activity, each with an empty state. API values are
+rendered with `textContent`/`createElement` only, and links are built solely
+from validated numeric IDs:
+
+- `policies.html?policy=<id>` opens the existing policy detail modal.
+- `index.html?conversation=<id>` replays that conversation in the existing
+  chat box and sends `conversation_id` with later messages.
+
+The shared header gains a **Dashboard** link only after `/api/auth/me`
+confirms a session. No build step or dependencies were added.
+
 ## Configuration
 
 .env

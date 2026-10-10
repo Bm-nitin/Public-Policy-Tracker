@@ -134,7 +134,12 @@ def list_conversations(user_id, page=1, per_page=DEFAULT_CONVERSATIONS_PER_PAGE)
     # keeps this function's behavior verified by the same test suite
     # either way. Real usage (151 policies, a handful of conversations
     # per user) never makes this a performance concern.
-    all_matching.sort(key=lambda c: (c.updated_at, c.id), reverse=True)
+    # ensure_aware_utc() in the key: SQLite hands timestamps back naive
+    # while a value computed in-process is aware - comparing the two
+    # raises TypeError, so every key is normalized to aware UTC first.
+    all_matching.sort(
+        key=lambda c: (ensure_aware_utc(c.updated_at), c.id), reverse=True,
+    )
 
     total = len(all_matching)
     start = (page - 1) * per_page
@@ -302,6 +307,22 @@ def add_message(user_id, conversation_id, role, content, metadata=None):
     reproducing either the clock-coarseness or the naive/aware
     discrepancy for real.
 
+    SIXTH ROOT CAUSE (a different one - the above only guaranteed
+    advancement past THIS conversation's own previous value): the same
+    coarse clock can give two DIFFERENT conversations the identical
+    timestamp. "First" created in tick 1, "Second" created in tick 2,
+    then the bump on "First" also lands in tick 2: now > First's old
+    value (so no advancement above), but now == Second's updated_at, and
+    the "updated_at DESC, id DESC" ordering (list_conversations(),
+    dashboard_service.get_recent_conversations()) then breaks the tie by
+    id, putting "Second" ahead of the conversation that was just
+    touched. The bumped value must therefore be strictly later than the
+    newest updated_at among ALL of this user's conversations. Scoped by
+    user_id - another user's timestamps are never read, so user
+    isolation is unchanged. Covered by
+    test_add_message_bump_outranks_other_conversation_in_same_clock_tick()
+    in tests/test_chat_history.py (forces the tick sequence directly).
+
     db.session.expire_all() is kept below - correct, harmless practice
     for any future caller that might reuse `conversation` (or any other
     already-loaded object) after this bulk update, even though it was
@@ -320,13 +341,20 @@ def add_message(user_id, conversation_id, role, content, metadata=None):
     db.session.add(message)
 
     now = _utcnow()
-    current_updated_at = ensure_aware_utc(conversation.updated_at) if conversation.updated_at is not None else None
-    if current_updated_at is not None and now <= current_updated_at:
-        # Clock resolution wasn't fine enough to distinguish "now" from
-        # the conversation's current updated_at - advance by the
-        # smallest possible increment instead of trusting the clock.
-        # See docstring above.
-        now = current_updated_at + timedelta(microseconds=1)
+    # Newest updated_at across this user's conversations (includes this
+    # one) - NOT just this conversation's own, see the docstring above.
+    # user_id-scoped; aggregated in Python like list_conversations().
+    known = [
+        ensure_aware_utc(c.updated_at)
+        for c in Conversation.query.filter_by(user_id=user_id).all()
+        if c.updated_at is not None
+    ]
+    latest_updated_at = max(known) if known else None
+    if latest_updated_at is not None and now <= latest_updated_at:
+        # Clock resolution wasn't fine enough to put "now" strictly
+        # after the newest existing timestamp - advance by the smallest
+        # possible increment instead of trusting the clock.
+        now = latest_updated_at + timedelta(microseconds=1)
     Conversation.query.filter_by(id=conversation.id).update({"updated_at": now})
 
     db.session.commit()

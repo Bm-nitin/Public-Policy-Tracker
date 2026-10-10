@@ -1,0 +1,339 @@
+/* dashboard.css — page-specific layout for dashboard.html.
+   Relies on shared/shared.css for tokens, .card, .btn, .badge, header and
+   footer. Breakpoints follow shared.css (900px / 640px). */
+
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+#dashContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+#dashContent[hidden],
+#dashLoading[hidden],
+.dash-error[hidden],
+.dash-empty[hidden],
+.dash-list[hidden] {
+  display: none;
+}
+
+#dashLoading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- user header ---------- */
+
+.dash-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.dash-user__avatar {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.dash-user__info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dash-user__info h1 {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.dash-user__email {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.dash-user__status {
+  flex: 0 0 auto;
+}
+
+.dash-user__status.is-unverified {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- stats ---------- */
+
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.dash-stat {
+  padding: var(--space-4) var(--space-5);
+}
+
+.dash-stat__value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--accent);
+}
+
+.dash-stat__label {
+  margin-top: var(--space-1);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ---------- panels ---------- */
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.dash-panel {
+  padding: var(--space-4) var(--space-5);
+  min-width: 0;
+}
+
+.dash-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.dash-panel__head h2 {
+  font-size: 16px;
+}
+
+.dash-panel__link {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dash-panel__link:hover {
+  text-decoration: underline;
+}
+
+.dash-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dash-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  min-width: 0;
+}
+
+.dash-item__title {
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.dash-item__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dash-item__text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.dash-item__text strong {
+  color: var(--text);
+}
+
+.dash-item__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dash-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dash-item__actions .btn {
+  min-height: 36px;
+}
+
+/* activity rows are flatter than cards */
+.dash-list--activity {
+  gap: 0;
+}
+
+.dash-activity-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.dash-activity-row:last-child {
+  border-bottom: 0;
+}
+
+.dash-activity-row__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dash-activity-row__label a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.dash-activity-row__label a:hover {
+  text-decoration: underline;
+}
+
+.dash-activity-row time {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- empty / error ---------- */
+
+.dash-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) 0 var(--space-2);
+  color: var(--text-secondary);
+}
+
+.dash-empty--compact {
+  padding: var(--space-2) 0;
+}
+
+.dash-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-6);
+}
+
+/* ---------- skeletons ---------- */
+
+.skeleton {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, var(--surface-secondary) 25%, var(--surface-hover) 50%, var(--surface-secondary) 75%);
+  background-size: 200% 100%;
+  animation: dash-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton--header { height: 76px; }
+.skeleton--stat { height: 92px; }
+.skeleton--panel { height: 220px; }
+
+@keyframes dash-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 900px) {
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .dash-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-user {
+    flex-wrap: wrap;
+    padding: var(--space-4);
+  }
+
+  .dash-panel {
+    padding: var(--space-4);
+  }
+
+  .dash-stat {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .dash-stat__label {
+    margin-top: 0;
+  }
+
+  .dash-item__actions .btn {
+    flex: 1 1 140px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .dash-activity-row {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+}
+
+/* anchors styled as buttons: no underline */
+.dash-item__actions a.btn,
+.dash-empty a.btn {
+  text-decoration: none;
+}

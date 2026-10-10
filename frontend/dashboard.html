@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Policy Tracker</title>
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme');
+                if (t !== 'light' && t !== 'dark') {
+                    t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+                }
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="shared/shared.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+
+<body data-page="dashboard" data-header="full">
+
+    <div id="app-header"></div>
+
+    <main class="page-container dashboard-page" id="dashboardMain">
+
+        <!-- LOADING: shown first. No account data is rendered until the
+             API call succeeds. -->
+        <div id="dashLoading" role="status" aria-live="polite">
+            <span class="sr-only">Loading your dashboard…</span>
+            <div class="skeleton skeleton--header" aria-hidden="true"></div>
+            <div class="dash-stats" aria-hidden="true">
+                <div class="skeleton skeleton--stat"></div>
+                <div class="skeleton skeleton--stat"></div>
+                <div class="skeleton skeleton--stat"></div>
+            </div>
+            <div class="dash-grid" aria-hidden="true">
+                <div class="skeleton skeleton--panel"></div>
+                <div class="skeleton skeleton--panel"></div>
+            </div>
+        </div>
+
+        <!-- ERROR: generic message only, never backend details. -->
+        <section id="dashError" class="card dash-error" role="alert" hidden>
+            <h1>Dashboard unavailable</h1>
+            <p id="dashErrorMessage">Unable to load your dashboard. Please try again.</p>
+            <button type="button" id="dashRetryBtn" class="btn btn-primary">Try again</button>
+        </section>
+
+        <!-- CONTENT: static structure; JS only fills it with textContent /
+             createElement after a successful response. -->
+        <div id="dashContent" hidden>
+
+            <header class="dash-user card">
+                <div class="dash-user__avatar" id="dashAvatar" aria-hidden="true"></div>
+                <div class="dash-user__info">
+                    <h1 id="dashUserName"></h1>
+                    <p class="dash-user__email text-muted" id="dashUserEmail"></p>
+                </div>
+                <span class="badge dash-user__status" id="dashVerified"></span>
+            </header>
+
+            <section class="dash-stats" aria-label="Your activity totals">
+                <div class="card dash-stat">
+                    <p class="dash-stat__value" id="statSaved">0</p>
+                    <p class="dash-stat__label">Saved Policies</p>
+                </div>
+                <div class="card dash-stat">
+                    <p class="dash-stat__value" id="statConversations">0</p>
+                    <p class="dash-stat__label">Conversations</p>
+                </div>
+                <div class="card dash-stat">
+                    <p class="dash-stat__value" id="statMessages">0</p>
+                    <p class="dash-stat__label">Messages</p>
+                </div>
+            </section>
+
+            <div class="dash-grid">
+
+                <section class="card dash-panel" aria-labelledby="savedHeading">
+                    <div class="dash-panel__head">
+                        <h2 id="savedHeading">Recent saved policies</h2>
+                        <a href="policies.html" class="dash-panel__link">Browse policies</a>
+                    </div>
+                    <ul class="dash-list" id="savedList"></ul>
+                    <div class="dash-empty" id="savedEmpty" hidden>
+                        <p>You haven't saved any policies yet.</p>
+                        <a href="policies.html" class="btn btn-secondary">Explore policies</a>
+                    </div>
+                </section>
+
+                <section class="card dash-panel" aria-labelledby="convHeading">
+                    <div class="dash-panel__head">
+                        <h2 id="convHeading">Recent conversations</h2>
+                        <a href="index.html" class="dash-panel__link">New chat</a>
+                    </div>
+                    <ul class="dash-list" id="convList"></ul>
+                    <div class="dash-empty" id="convEmpty" hidden>
+                        <p>No conversations yet.</p>
+                        <a href="index.html" class="btn btn-secondary">Ask a policy question</a>
+                    </div>
+                </section>
+
+            </div>
+
+            <section class="card dash-panel dash-activity" aria-labelledby="activityHeading">
+                <div class="dash-panel__head">
+                    <h2 id="activityHeading">Recent activity</h2>
+                </div>
+                <ul class="dash-list dash-list--activity" id="activityList"></ul>
+                <div class="dash-empty dash-empty--compact" id="activityEmpty" hidden>
+                    <p>No recent activity.</p>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <div id="app-footer"></div>
+
+    <script src="shared/shared.js"></script>
+    <script src="dashboard.js"></script>
+
+</body>
+
+</html>

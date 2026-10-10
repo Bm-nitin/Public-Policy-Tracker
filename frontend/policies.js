@@ -66,7 +66,18 @@
     loadCategoryOptions();
     loadSubCategoryOptions();
     fetchAndRenderPolicies();
+    openFromQuery();
   });
+
+  // Phase 15: dashboard.html links here with ?policy=<id>. Only a plain
+  // positive integer is accepted; it then goes through the same
+  // openDetail() / GET /api/policies/<id> path as the "View details" button.
+  function openFromQuery() {
+    var raw = new URLSearchParams(window.location.search).get("policy");
+    if (!raw || !/^[1-9][0-9]{0,9}$/.test(raw)) return;
+    history.replaceState(null, "", window.location.pathname);
+    openDetail(raw);
+  }
 
   /* ------------------------------------------------------------------
      EVENTS

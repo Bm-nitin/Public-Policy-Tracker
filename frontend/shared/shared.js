@@ -225,8 +225,29 @@
       if (logoutBtn) {
         logoutBtn.addEventListener("click", logout);
       }
+      addAuthenticatedNav();
     }
     // If no user, the default "Sign In" link rendered in renderHeader() stays as-is.
+  }
+
+  // Links that only make sense for a signed-in visitor. Added after
+  // /api/auth/me confirms a session, so guests never see them. Built with
+  // createElement - no HTML strings.
+  function addAuthenticatedNav() {
+    var nav = document.getElementById("header-nav");
+    if (!nav || nav.querySelector('[data-auth-nav="dashboard"]')) return;
+
+    var link = document.createElement("a");
+    link.setAttribute("href", "dashboard.html");
+    link.setAttribute("data-auth-nav", "dashboard");
+    link.textContent = "Dashboard";
+    if (document.body.getAttribute("data-page") === "dashboard") {
+      link.className = "is-active";
+      link.setAttribute("aria-current", "page");
+    }
+
+    var policiesLink = nav.querySelector('a[href="policies.html"]');
+    nav.insertBefore(link, policiesLink);
   }
 
   function escapeHtml(str) {

@@ -24,6 +24,16 @@ function toggle() {
   document.getElementById("container").classList.toggle("active");
 }
 
+// Phase 15: dashboard.html sends signed-out visitors to
+// login.html?next=dashboard.html. `next` is matched against this exact
+// allowlist - never used as a URL - so it cannot become an open redirect.
+const POST_LOGIN_ALLOWED = ["dashboard.html"];
+
+function getPostLoginDestination() {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return POST_LOGIN_ALLOWED.includes(next) ? next : "index.html";
+}
+
 /* SIGNUP */
 async function signup() {
   const name = document.getElementById("signupName").value;
@@ -86,7 +96,7 @@ async function login() {
       return;
     }
 
-    window.location.href = "index.html";
+    window.location.href = getPostLoginDestination();
   } catch (err) {
     alert("Could not reach the server. Please try again.");
   }

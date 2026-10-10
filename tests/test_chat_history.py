@@ -409,6 +409,102 @@ def test_add_message_bumps_conversation_updated_at(history_app):
         assert reloaded.updated_at > original_updated_at
 
 
+def test_add_message_bump_outranks_other_conversation_in_same_clock_tick(history_app, monkeypatch):
+    """Regression for tests/test_dashboard.py's
+    test_conversations_ordering_newest_updated_first on a coarse clock
+    (Windows): "First" is created in tick 1, "Second" in tick 2, and the
+    bump on "First" also lands in tick 2, so it equals "Second"'s
+    updated_at and the id-DESC tie-break wrongly put "Second" first.
+    The clock is forced explicitly (no sleep, no reliance on real timing),
+    and a second user's newer conversation must not influence the result."""
+    import datetime as dt
+    import conversations_service as cs
+    import models
+    from database import db
+    from models import User
+
+    tick = [dt.datetime(2026, 10, 10, 12, 0, 0, tzinfo=dt.timezone.utc)]
+
+    class _FrozenClock(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return tick[0]
+
+    monkeypatch.setattr(models, "datetime", _FrozenClock)
+
+    with history_app.app_context():
+        user = User(name="T", email="ticktie@example.com", password_hash="x", email_verified=True)
+        other = User(name="O", email="ticktie-other@example.com", password_hash="x", email_verified=True)
+        db.session.add(user)
+        db.session.add(other)
+        db.session.commit()
+
+        first = cs.create_conversation(user.id, title="First")
+        first_id = first.id
+        tick[0] += dt.timedelta(milliseconds=15.6)
+        second_id = cs.create_conversation(user.id, title="Second").id
+        tick[0] += dt.timedelta(seconds=60)  # another user is far newer
+        cs.create_conversation(other.id, title="Other user's")
+        tick[0] = tick[0] - dt.timedelta(seconds=60)  # back to tick 2 for the bump
+
+        cs.add_message(user.id, first_id, "user", "bump")
+
+        items = cs.list_conversations(user.id)["items"]
+        assert [i["id"] for i in items] == [first_id, second_id]
+        assert items[0]["updated_at"] > items[1]["updated_at"]
+
+
+def test_add_message_frozen_clock_ordering_follows_latest_touch(history_app, monkeypatch):
+    """Clock frozen to ONE value for the whole test (the worst case: every
+    updated_at would tie). Successive bumps in the SAME session - so the
+    identity map is reused between calls - must still order conversations
+    by most-recent touch, newest first, with no sleeps."""
+    import datetime as dt
+    import conversations_service as cs
+    import models
+    from database import db
+    from models import User
+
+    frozen = dt.datetime(2026, 10, 10, 12, 0, 0, tzinfo=dt.timezone.utc)
+
+    class _FrozenClock(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return frozen
+
+    monkeypatch.setattr(models, "datetime", _FrozenClock)
+
+    with history_app.app_context():
+        user = User(name="F", email="frozen@example.com", password_hash="x", email_verified=True)
+        db.session.add(user)
+        db.session.commit()
+
+        a = cs.create_conversation(user.id, title="A").id
+        b = cs.create_conversation(user.id, title="B").id
+        c = cs.create_conversation(user.id, title="C").id
+
+        def order():
+            return [i["id"] for i in cs.list_conversations(user.id)["items"]]
+
+        # All three tie at the frozen instant: id DESC is the only order.
+        assert order() == [c, b, a]
+
+        # Touch the LOWER ids last: a tie-break on id alone would keep the
+        # higher id ahead and get every one of these wrong.
+        cs.add_message(user.id, b, "user", "1")
+        assert order() == [b, c, a]
+        cs.add_message(user.id, a, "user", "2")
+        assert order() == [a, b, c]
+        cs.add_message(user.id, c, "user", "3")
+        assert order() == [c, a, b]
+
+        # Strictly increasing, and aware UTC throughout.
+        items = cs.list_conversations(user.id)["items"]
+        stamps = [i["updated_at"] for i in items]
+        assert stamps == sorted(stamps, reverse=True) and len(set(stamps)) == 3
+        assert all(s.endswith("+00:00") for s in stamps)
+
+
 def test_add_message_advances_updated_at_even_when_clock_does_not(history_app, monkeypatch):
     """Deterministic, platform-independent regression test for the
     real root cause (see conversations_service.py's add_message()

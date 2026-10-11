@@ -115,9 +115,15 @@ except ImportError:
     _fake_sqlalchemy = types.ModuleType("sqlalchemy")
     _fake_sqlalchemy_exc = types.ModuleType("sqlalchemy.exc")
 
-    class _ShimIntegrityError(Exception):
+    # Phase 17: backend/account_routes.py catches SQLAlchemyError. In real
+    # SQLAlchemy, IntegrityError is a subclass of it - mirror that here.
+    class _ShimSQLAlchemyError(Exception):
         pass
 
+    class _ShimIntegrityError(_ShimSQLAlchemyError):
+        pass
+
+    _fake_sqlalchemy_exc.SQLAlchemyError = _ShimSQLAlchemyError
     _fake_sqlalchemy_exc.IntegrityError = _ShimIntegrityError
     _fake_sqlalchemy.exc = _fake_sqlalchemy_exc
     # Phase 9: backend/retrieval.py uses `from sqlalchemy import or_` to

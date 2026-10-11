@@ -299,6 +299,33 @@ from validated numeric IDs:
 The shared header gains a **Dashboard** link only after `/api/auth/me`
 confirms a session. No build step or dependencies were added.
 
+## Profile & Account Management (Phase 17)
+
+Signed-in users manage their account at `frontend/profile.html` (nav link
+**Account**, shown only after `/api/auth/me` confirms a session). It uses
+three authenticated endpoints from `backend/account_routes.py`; identity
+always comes from the server-side session, never from anything the client
+sends.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/account/profile` | `{profile: {name, email, email_verified, created_at}}` (no internal id) |
+| `PATCH /api/account/profile` | change the display name. Body must be exactly `{name}`; any other field (`email`, `id`, ...) is rejected with 400 |
+| `POST /api/account/change-password` | body `{current_password, new_password}`. Verifies the current password (Argon2id), applies the same 8-128 character rule as registration/reset, then signs out the user's **other** sessions and keeps the current one |
+
+Responses use the existing conventions: `{error, details?}` for failures,
+401 when there is no valid session, and a generic 500 on database failure
+(exception class only is logged - never SQL, parameters, hashes or
+passwords). A wrong current password is **400**, not 401, so the page does
+not mistake a typo for a lost session. Responses carry
+`Cache-Control: no-store`.
+
+Not included (the schema has no verified flow for them): changing the email
+address, and any password-reset change - reset stays in `/api/auth/*`. There
+is **no migration**: it reuses `users.name` and `users.password_hash`.
+Login redirects back to the page via `login.html?next=profile.html` (an
+exact allowlist, never used as a URL). Tests: `tests/test_account.py`.
+
 ## Configuration
 
 .env

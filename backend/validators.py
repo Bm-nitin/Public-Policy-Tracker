@@ -31,6 +31,24 @@ def normalize_email(email):
     return email.strip().lower()
 
 
+def validate_name(name):
+    """Validates a display name in isolation. Returns a list of error
+    strings, empty if valid. These are the SAME rules (type, non-blank
+    after trimming, <= MAX_NAME_LENGTH) that validate_registration_payload()
+    applies inline - kept as its own function for the Phase 17 profile
+    update, which has no email/password to validate alongside it.
+    tests/test_account.py asserts the two stay in step. The caller stores
+    name.strip(), exactly as registration does."""
+    errors = []
+    if not isinstance(name, str):
+        errors.append("name must be a string")
+    elif not name.strip():
+        errors.append("name must not be empty")
+    elif len(name) > MAX_NAME_LENGTH:
+        errors.append(f"name must be {MAX_NAME_LENGTH} characters or fewer")
+    return errors
+
+
 def validate_password(password):
     """Validates a password value in isolation (type, non-empty, length
     bounds only - no knowledge of "is this a registration or a reset").

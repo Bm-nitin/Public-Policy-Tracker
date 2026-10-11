@@ -763,3 +763,16 @@ textarea:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   15. PHASE 17 - SIX-LINK SIGNED-IN NAV
+   Adding "Account" made the signed-in header need ~941px on one row. Between
+   the mobile-menu breakpoint (900px) and 960px the username is therefore
+   hidden - it is already hidden on mobile, and the name is shown on the
+   Account page itself.
+   -------------------------------------------------------------------------- */
+@media (min-width: 901px) and (max-width: 960px) {
+  .app-header__username {
+    display: none;
+  }
+}

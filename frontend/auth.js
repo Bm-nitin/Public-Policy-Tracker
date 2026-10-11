@@ -41,9 +41,9 @@ document.addEventListener("keydown", function (e) {
 });
 
 // Phase 15: dashboard.html sends signed-out visitors to
-// login.html?next=dashboard.html. `next` is matched against this exact
+// login.html?next=dashboard.html (and, since Phase 17, ?next=profile.html). `next` is matched against this exact
 // allowlist - never used as a URL - so it cannot become an open redirect.
-const POST_LOGIN_ALLOWED = ["dashboard.html"];
+const POST_LOGIN_ALLOWED = ["dashboard.html", "profile.html"];
 
 function getPostLoginDestination() {
   const next = new URLSearchParams(window.location.search).get("next");

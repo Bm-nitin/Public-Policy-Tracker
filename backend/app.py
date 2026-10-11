@@ -7,6 +7,7 @@ from auth_routes import auth_bp
 from policies_routes import policies_bp
 from conversations_routes import conversations_bp
 from saved_policies_routes import saved_policies_bp
+from account_routes import account_bp
 from dashboard_routes import dashboard_bp
 from chatbot import get_response
 from policy_loader import load_policies
@@ -71,6 +72,13 @@ app.register_blueprint(saved_policies_bp)
 # aggregation over existing tables/JSON, no new table, so registering
 # it has no schema implications at all.
 app.register_blueprint(dashboard_bp)
+
+# Phase 17: authenticated profile & account management (GET/PATCH
+# /api/account/profile, POST /api/account/change-password). Same
+# always-safe-to-register pattern as the blueprints above - every route
+# requires login, so an unconfigured database just yields a normal 401.
+# No new table or column: it reuses users.name / users.password_hash.
+app.register_blueprint(account_bp)
 
 
 # Health check

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account | Policy Tracker</title>
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme');
+                if (t !== 'light' && t !== 'dark') {
+                    t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+                }
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="shared/shared.css">
+    <link rel="stylesheet" href="profile.css">
+</head>
+
+<body data-page="profile" data-header="full">
+
+    <div id="app-header"></div>
+
+    <main class="page-container account-page" id="accountMain">
+
+        <!-- LOADING: no account data is rendered until the API call succeeds. -->
+        <div id="accLoading" role="status" aria-live="polite">
+            <span class="sr-only">Loading your account…</span>
+            <div class="acc-skeleton acc-skeleton--head" aria-hidden="true"></div>
+            <div class="acc-skeleton acc-skeleton--card" aria-hidden="true"></div>
+            <div class="acc-skeleton acc-skeleton--card" aria-hidden="true"></div>
+        </div>
+
+        <!-- ERROR: generic message only, never backend details. -->
+        <section id="accError" class="card acc-load-error" role="alert" hidden>
+            <h1>Account unavailable</h1>
+            <p id="accErrorMessage">Unable to load your account. Please try again.</p>
+            <button type="button" id="accRetryBtn" class="btn btn-primary">Try again</button>
+        </section>
+
+        <!-- CONTENT: static structure; profile.js fills it with textContent / .value only. -->
+        <div id="accContent" hidden>
+
+            <header class="acc-head">
+                <h1>Account</h1>
+                <p class="text-muted">Manage your profile and password.</p>
+            </header>
+
+            <section class="card acc-card" aria-labelledby="profileHeading">
+                <h2 id="profileHeading">Profile</h2>
+
+                <dl class="acc-facts">
+                    <div class="acc-fact">
+                        <dt>Email</dt>
+                        <dd id="accEmail"></dd>
+                    </div>
+                    <div class="acc-fact">
+                        <dt>Email status</dt>
+                        <dd><span class="badge" id="accVerified"></span></dd>
+                    </div>
+                    <div class="acc-fact">
+                        <dt>Member since</dt>
+                        <dd id="accSince"></dd>
+                    </div>
+                </dl>
+                <p class="acc-help">Your email is your sign-in identity and can't be changed here.</p>
+
+                <form id="profileForm" novalidate>
+                    <div class="field">
+                        <label for="accName">Display name</label>
+                        <input type="text" id="accName" name="name" maxlength="120" required autocomplete="name"
+                            aria-describedby="accNameHelp accNameError">
+                        <p id="accNameHelp" class="acc-help">Shown in the header. Up to 120 characters.</p>
+                        <p id="accNameError" class="acc-field-error" hidden></p>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="accNameSave">Save changes</button>
+                    <p id="profileStatus" class="form-status acc-status" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+
+            <section class="card acc-card" aria-labelledby="passwordHeading">
+                <h2 id="passwordHeading">Change password</h2>
+                <p class="acc-help">Changing your password signs you out of your other devices. This device stays signed in.</p>
+
+                <form id="passwordForm" novalidate>
+                    <div class="field">
+                        <label for="accCurrentPw">Current password</label>
+                        <input type="password" id="accCurrentPw" name="current_password" required
+                            autocomplete="current-password" aria-describedby="accCurrentPwError">
+                        <p id="accCurrentPwError" class="acc-field-error" hidden></p>
+                    </div>
+                    <div class="field">
+                        <label for="accNewPw">New password</label>
+                        <input type="password" id="accNewPw" name="new_password" required minlength="8" maxlength="128"
+                            autocomplete="new-password" aria-describedby="accNewPwHelp accNewPwError">
+                        <p id="accNewPwHelp" class="acc-help">8 to 128 characters.</p>
+                        <p id="accNewPwError" class="acc-field-error" hidden></p>
+                    </div>
+                    <div class="field">
+                        <label for="accConfirmPw">Confirm new password</label>
+                        <input type="password" id="accConfirmPw" name="confirm_password" required maxlength="128"
+                            autocomplete="new-password" aria-describedby="accConfirmPwError">
+                        <p id="accConfirmPwError" class="acc-field-error" hidden></p>
+                    </div>
+
+                    <label class="acc-check" for="accShowPw">
+                        <input type="checkbox" id="accShowPw">
+                        <span>Show passwords</span>
+                    </label>
+
+                    <p id="passwordFormError" class="acc-field-error" hidden></p>
+                    <button type="submit" class="btn btn-primary" id="accPasswordSave">Update password</button>
+                    <p id="passwordStatus" class="form-status acc-status" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+
+        </div>
+
+    </main>
+
+    <div id="app-footer"></div>
+
+    <script src="shared/shared.js"></script>
+    <script src="profile.js"></script>
+
+</body>
+
+</html>

@@ -282,22 +282,32 @@
 
   // Links that only make sense for a signed-in visitor. Added after
   // /api/auth/me confirms a session, so guests never see them. Built with
-  // createElement - no HTML strings.
+  // createElement - no HTML strings. Phase 17 added Account.
+  var AUTH_NAV_ITEMS = [
+    { key: "dashboard", href: "dashboard.html", label: "Dashboard" },
+    { key: "profile", href: "profile.html", label: "Account" },
+  ];
+
   function addAuthenticatedNav() {
     var nav = document.getElementById("header-nav");
-    if (!nav || nav.querySelector('[data-auth-nav="dashboard"]')) return;
-
-    var link = document.createElement("a");
-    link.setAttribute("href", "dashboard.html");
-    link.setAttribute("data-auth-nav", "dashboard");
-    link.textContent = "Dashboard";
-    if (document.body.getAttribute("data-page") === "dashboard") {
-      link.className = "is-active";
-      link.setAttribute("aria-current", "page");
-    }
+    if (!nav) return;
 
     var policiesLink = nav.querySelector('a[href="policies.html"]');
-    nav.insertBefore(link, policiesLink);
+    var currentPage = document.body.getAttribute("data-page");
+
+    AUTH_NAV_ITEMS.forEach(function (item) {
+      if (nav.querySelector('[data-auth-nav="' + item.key + '"]')) return;
+
+      var link = document.createElement("a");
+      link.setAttribute("href", item.href);
+      link.setAttribute("data-auth-nav", item.key);
+      link.textContent = item.label;
+      if (currentPage === item.key) {
+        link.className = "is-active";
+        link.setAttribute("aria-current", "page");
+      }
+      nav.insertBefore(link, policiesLink);
+    });
   }
 
   function escapeHtml(str) {

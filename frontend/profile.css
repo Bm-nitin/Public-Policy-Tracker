@@ -1,0 +1,203 @@
+/* profile.css - page-specific layout for profile.html (Phase 17).
+   Relies on shared/shared.css for tokens, .card, .btn, .badge, .field,
+   .form-status, header/footer and the Phase 16 touch-target rules. */
+
+.account-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 720px;
+}
+
+#accContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+#accContent[hidden],
+#accLoading[hidden],
+.acc-load-error[hidden],
+.acc-field-error[hidden] {
+  display: none;
+}
+
+#accLoading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- heading ---------- */
+
+.acc-head h1 {
+  font-size: clamp(22px, 3vw, 28px);
+}
+
+/* ---------- cards ---------- */
+
+.acc-card {
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.acc-card h2 {
+  font-size: 18px;
+  margin-bottom: var(--space-3);
+}
+
+/* ---------- read-only facts ---------- */
+
+.acc-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.acc-fact {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.acc-fact dt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.acc-fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#accVerified.is-unverified {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.acc-help {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.acc-card .field .acc-help {
+  margin: 0;
+}
+
+/* ---------- validation / status ---------- */
+
+.acc-field-error {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.acc-status {
+  margin-top: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 3px solid transparent;
+}
+
+.acc-status.is-success {
+  color: var(--text);
+  border-left-color: var(--accent);
+}
+
+.acc-status.is-error {
+  color: var(--text);
+  border-left-color: var(--danger);
+}
+
+/* ---------- show-password checkbox ---------- */
+
+.acc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin-bottom: var(--space-3);
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.acc-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* ---------- load error ---------- */
+
+.acc-load-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-6);
+}
+
+/* ---------- skeletons ---------- */
+
+.acc-skeleton {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, var(--surface-secondary) 25%, var(--surface-hover) 50%, var(--surface-secondary) 75%);
+  background-size: 200% 100%;
+  animation: acc-shimmer 1.4s ease-in-out infinite;
+}
+
+.acc-skeleton--head { height: 56px; }
+.acc-skeleton--card { height: 240px; }
+
+@keyframes acc-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acc-skeleton { animation: none; }
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 640px) {
+  .acc-card {
+    padding: var(--space-4);
+  }
+
+  .acc-fact {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .acc-card .btn[type="submit"] {
+    width: 100%;
+  }
+
+  .acc-load-error {
+    padding: var(--space-5);
+  }
+}

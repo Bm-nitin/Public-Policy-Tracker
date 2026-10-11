@@ -21,7 +21,7 @@
 
 .policies-search {
   flex: 1;
-  min-width: 220px;
+  min-width: min(220px, 100%);
 }
 
 .policies-filters {
@@ -41,7 +41,8 @@
 
 .policies-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* min(260px, 100%): a track may shrink to the container on very narrow screens */
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: var(--space-4);
 }
 
@@ -68,6 +69,7 @@
    layout changes: name, sector/category/sub-category badges, short
    description, and a "View details" action. */
 .policy-card {
+  min-width: 0; /* grid items default to min-content: one long word would widen the whole grid */
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
@@ -83,11 +85,13 @@
 .policy-card__title {
   font-size: 15px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .policy-card__desc {
   font-size: 13px;
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 .policy-card__actions {
@@ -105,6 +109,7 @@
 
 .policies-pagination {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
@@ -144,9 +149,16 @@
   position: relative;
   width: 100%;
   max-width: 560px;
-  max-height: 85vh;
+  max-height: 85vh; /* fallback for browsers without dvh */
+  max-height: calc(100dvh - 2 * var(--space-4));
   overflow-y: auto;
+  overscroll-behavior: contain; /* scrolling the dialog never scrolls the page behind it */
   padding: var(--space-6);
+}
+
+/* Set by policies.js while the dialog is open (background must not scroll). */
+html.modal-open {
+  overflow: hidden;
 }
 
 .policy-modal__close {
@@ -171,6 +183,7 @@
 #policyModalBody h2 {
   margin-bottom: var(--space-3);
   padding-right: var(--space-6);
+  overflow-wrap: anywhere;
 }
 
 .policy-modal__field {
@@ -189,6 +202,7 @@
   font-size: 14px;
   color: var(--text);
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 #policyModalBody .btn {
@@ -196,12 +210,15 @@
 }
 
 @media (max-width: 640px) {
+  /* Stack the three selects: side by side they were ~85px wide at 320px. */
   .policies-filters {
     width: 100%;
+    flex-direction: column;
+    flex-wrap: nowrap;
   }
 
   .policies-filters select {
-    flex: 1;
+    width: 100%;
     min-width: 0;
   }
 
@@ -212,9 +229,23 @@
   .policy-modal {
     padding: var(--space-5);
     max-height: 90vh;
+    max-height: calc(100dvh - 2 * var(--space-4));
+  }
+
+  #policyModalBody .btn {
+    width: 100%;
   }
 
   .policies-pagination {
     gap: var(--space-2);
+  }
+}
+
+/* Touch: the close control meets the 44px guideline. */
+@media (max-width: 900px), (pointer: coarse) {
+  .policy-modal__close {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
   }
 }

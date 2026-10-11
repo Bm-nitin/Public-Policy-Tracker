@@ -48,7 +48,7 @@
   --surface-hover: #16213b;
   --text: #e2e8f0;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-muted: #8493aa; /* Phase 16: was #64748b (3.1-4.2:1); now >= 4.5:1 on every dark surface */
   --border: #1e293b;
   --border-strong: #334155;
   --accent: #38bdf8;
@@ -68,10 +68,10 @@
   --surface-hover: #e5ebf3;
   --text: #0f172a;
   --text-secondary: #47576b;
-  --text-muted: #6b7a8f;
+  --text-muted: #5b6b80; /* Phase 16: was #6b7a8f (3.9-4.4:1); now >= 4.5:1 on every light surface */
   --border: #dde4ee;
   --border-strong: #c6d0dd;
-  --accent: #0284c7;
+  --accent: #0270ad; /* Phase 16: was #0284c7 (3.6-4.1:1 for small text/links); now >= 4.5:1 */
   --accent-hover: #0369a1;
   --accent-contrast: #ffffff;
   --danger: #dc2626;
@@ -101,6 +101,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   transition: background var(--transition-base), color var(--transition-base);
@@ -284,6 +285,7 @@ textarea:focus {
 }
 
 .form-status {
+  overflow-wrap: anywhere;
   font-size: 13px;
   color: var(--text-secondary);
   min-height: 18px;
@@ -306,6 +308,9 @@ textarea:focus {
 
 .badge {
   display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
@@ -491,7 +496,11 @@ textarea:focus {
   gap: var(--space-6);
 }
 
-.app-footer__brand h4 {
+/* .app-footer__brand p {13px, max-width} would otherwise out-rank a bare class */
+.app-footer__brand .app-footer__title {
+  max-width: none;
+  font-weight: 700;
+  line-height: 1.25;
   color: var(--accent);
   font-size: 16px;
   margin-bottom: var(--space-2);
@@ -502,7 +511,8 @@ textarea:focus {
   font-size: 13px;
 }
 
-.app-footer__col h5 {
+.app-footer__col-title {
+  line-height: normal; /* matches the former <h5> so the footer is pixel-identical */
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -617,17 +627,30 @@ textarea:focus {
     transform: translateY(-8px);
     opacity: 0;
     pointer-events: none;
-    transition: transform var(--transition-base), opacity var(--transition-base);
+    /* Closed = hidden from keyboard and assistive tech, not just invisible.
+       visibility animates discretely, so it flips only after the fade. */
+    visibility: hidden;
+    /* Never taller than the screen (short landscape phones): scroll inside. */
+    max-height: calc(100vh - var(--header-height));
+    max-height: calc(100dvh - var(--header-height));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transition: transform var(--transition-base), opacity var(--transition-base),
+      visibility var(--transition-base);
   }
 
   .app-header__nav.is-open {
     transform: translateY(0);
     opacity: 1;
     pointer-events: auto;
+    visibility: visible;
   }
 
   .app-header__nav a {
+    display: flex;
+    align-items: center;
     width: 100%;
+    min-height: 44px;
     padding: var(--space-3) 0;
     border-bottom: 1px solid var(--border);
   }
@@ -662,5 +685,81 @@ textarea:focus {
   .app-footer__bottom-inner {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   14. PHASE 16 - MOBILE / TOUCH HARDENING
+   Additive only: nothing here applies to a wide, mouse-driven desktop, so the
+   desktop appearance is unchanged. Touch targets follow the 44x44px guideline.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px), (pointer: coarse) {
+  .app-header__menu-btn,
+  .theme-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .btn {
+    min-height: 44px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  select,
+  textarea {
+    min-height: 44px;
+    /* >= 16px stops iOS Safari zooming the page when a field is focused */
+    font-size: 16px;
+  }
+
+  .app-footer__col a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .app-footer__disclaimer summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* Very narrow phones (320-400px): keep logo + every header control on screen. */
+@media (max-width: 400px) {
+  .app-header {
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .app-header__logo {
+    font-size: 16px;
+  }
+
+  .app-header__right,
+  .app-header__account {
+    gap: var(--space-2);
+  }
+
+  .app-header .btn {
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 13px;
+  }
+}
+
+/* Respect the OS "reduce motion" setting everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

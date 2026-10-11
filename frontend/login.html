@@ -32,16 +32,16 @@
 
         <!-- SIGN IN -->
         <div class="auth-card form-container sign-in card">
-            <h2>Welcome back</h2>
+            <h1>Welcome back</h1>
             <p class="auth-subtext">Sign in to continue to Policy Tracker.</p>
 
             <div class="field">
                 <label for="loginEmail">Email</label>
-                <input type="email" id="loginEmail" placeholder="you@example.com">
+                <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="username" autocapitalize="none" spellcheck="false">
             </div>
             <div class="field">
                 <label for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" placeholder="Your password">
+                <input type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
             </div>
 
             <button onclick="login()" class="btn btn-primary btn-block">Sign In</button>
@@ -55,20 +55,20 @@
 
         <!-- SIGN UP -->
         <div class="auth-card form-container sign-up card">
-            <h2>Create your account</h2>
+            <h1>Create your account</h1>
             <p class="auth-subtext">Join Policy Tracker to ask the assistant questions.</p>
 
             <div class="field">
                 <label for="signupName">Name</label>
-                <input type="text" id="signupName" placeholder="Your name">
+                <input type="text" id="signupName" placeholder="Your name" autocomplete="name">
             </div>
             <div class="field">
                 <label for="signupEmail">Email</label>
-                <input type="email" id="signupEmail" placeholder="you@example.com">
+                <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" autocapitalize="none" spellcheck="false">
             </div>
             <div class="field">
                 <label for="signupPassword">Password</label>
-                <input type="password" id="signupPassword" placeholder="Min 6 characters">
+                <input type="password" id="signupPassword" placeholder="Min 6 characters" autocomplete="new-password">
             </div>
 
             <button onclick="signup()" class="btn btn-primary btn-block">Sign Up</button>

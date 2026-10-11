@@ -114,10 +114,10 @@
       '<div class="app-header' + (isSimple ? " app-header--simple" : "") + '">' +
         '<a href="index.html" class="app-header__logo">Policy Tracker</a>' +
         (isSimple ? "" :
-          '<button type="button" class="app-header__menu-btn" id="header-menu-btn" aria-label="Toggle navigation" aria-expanded="false">' +
+          '<button type="button" class="app-header__menu-btn" id="header-menu-btn" aria-label="Navigation menu" aria-controls="header-nav" aria-expanded="false">' +
             ICONS.menu +
           "</button>" +
-          '<nav class="app-header__nav" id="header-nav">' + navHtml + "</nav>"
+          '<nav class="app-header__nav" id="header-nav" aria-label="Main">' + navHtml + "</nav>"
         ) +
         '<div class="app-header__right">' +
           '<button type="button" class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark and light mode">' +
@@ -141,9 +141,59 @@
       var menuBtn = document.getElementById("header-menu-btn");
       var nav = document.getElementById("header-nav");
       if (menuBtn && nav) {
+        // Single source of truth for open/closed: the class AND aria-expanded
+        // are always set together here.
+        var setMenuOpen = function (open, returnFocus) {
+          nav.classList.toggle("is-open", open);
+          menuBtn.setAttribute("aria-expanded", String(open));
+          if (!open && returnFocus) menuBtn.focus();
+        };
+        var menuIsOpen = function () {
+          return nav.classList.contains("is-open");
+        };
+
         menuBtn.addEventListener("click", function () {
-          var isOpen = nav.classList.toggle("is-open");
-          menuBtn.setAttribute("aria-expanded", String(isOpen));
+          setMenuOpen(!menuIsOpen(), false);
+        });
+
+        // Close after navigation: any link inside the menu (including ones
+        // added later, e.g. the signed-in Dashboard link) closes it. Covers
+        // same-page/hash links and bfcache restores; full page loads reset it.
+        nav.addEventListener("click", function (e) {
+          if (e.target.closest && e.target.closest("a")) setMenuOpen(false, false);
+        });
+
+        // Escape closes and hands focus back to the button.
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && menuIsOpen()) setMenuOpen(false, true);
+        });
+
+        // Tapping/clicking anywhere outside the menu or its button closes it.
+        document.addEventListener("click", function (e) {
+          if (menuIsOpen() && !nav.contains(e.target) && !menuBtn.contains(e.target)) {
+            setMenuOpen(false, false);
+          }
+        });
+
+        // Keyboard users tabbing out of the open menu close it rather than
+        // leaving it covering the page.
+        nav.addEventListener("focusout", function (e) {
+          if (menuIsOpen() && e.relatedTarget && !nav.contains(e.relatedTarget) && e.relatedTarget !== menuBtn) {
+            setMenuOpen(false, false);
+          }
+        });
+
+        // Rotating a tablet / widening the window past the breakpoint must
+        // not leave a stale open state behind.
+        if (window.matchMedia) {
+          var desktop = window.matchMedia("(min-width: 901px)");
+          var onChange = function (e) { if (e.matches) setMenuOpen(false, false); };
+          if (desktop.addEventListener) desktop.addEventListener("change", onChange);
+          else if (desktop.addListener) desktop.addListener(onChange);
+        }
+
+        window.addEventListener("pageshow", function (e) {
+          if (e.persisted) setMenuOpen(false, false);
         });
       }
     }
@@ -163,11 +213,11 @@
     var fullHtml =
       '<div class="app-footer__inner">' +
         '<div class="app-footer__brand">' +
-          "<h4>Policy Tracker</h4>" +
+          '<p class="app-footer__title">Policy Tracker</p>' +
           "<p>Track and explore public policy changes across sectors using a policy database and an AI-assisted chatbot.</p>" +
         "</div>" +
         '<div class="app-footer__col">' +
-          "<h5>Navigate</h5>" +
+          '<h2 class="app-footer__col-title">Navigate</h2>' +
           "<ul>" +
             '<li><a href="index.html">Home</a></li>' +
             '<li><a href="policies.html">Policies</a></li>' +
@@ -176,7 +226,7 @@
           "</ul>" +
         "</div>" +
         '<div class="app-footer__col">' +
-          "<h5>Legal</h5>" +
+          '<h2 class="app-footer__col-title">Legal</h2>' +
           "<ul>" +
             '<li><a href="terms.html">Terms &amp; Conditions</a></li>' +
             '<li><a href="privacy.html">Privacy Policy</a></li>' +

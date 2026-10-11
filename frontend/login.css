@@ -13,6 +13,7 @@
   justify-content: center;
   padding: var(--space-7) var(--space-4);
   min-height: calc(100vh - var(--header-height) - 140px);
+  min-height: calc(100dvh - var(--header-height) - 140px);
 }
 
 .auth-container {
@@ -25,7 +26,10 @@
   text-align: center;
 }
 
-.form-container h2 {
+/* These panels are the page's only heading, so they are <h1>s (they were
+   <h2>s with no <h1>); keep the existing h2 size so nothing changes visually. */
+.form-container h1 {
+  font-size: clamp(22px, 3vw, 28px);
   margin-bottom: var(--space-2);
 }
 
@@ -88,5 +92,21 @@
 @media (max-width: 480px) {
   .form-container {
     padding: var(--space-5);
+  }
+}
+
+/* Touch: the Sign Up / Sign In switch sits in a sentence but needs a real target. */
+@media (max-width: 900px), (pointer: coarse) {
+  .link-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 var(--space-2);
+  }
+
+  .auth-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }

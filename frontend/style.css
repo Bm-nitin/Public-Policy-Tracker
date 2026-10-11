@@ -47,18 +47,19 @@
   gap: var(--space-2);
 }
 
-.quick-topics span {
+.quick-topics .quick-topic {
   padding: 7px 14px;
   border-radius: var(--radius-pill);
   background: var(--surface-secondary);
   border: 1px solid var(--border);
   color: var(--text-secondary);
+  font: inherit;
   font-size: 13px;
   cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.quick-topics span:hover {
+.quick-topics .quick-topic:hover {
   color: var(--accent);
   border-color: var(--accent);
 }
@@ -74,7 +75,9 @@
 .chat-card {
   display: flex;
   flex-direction: column;
-  height: 520px;
+  height: 520px; /* fallback for browsers without dvh */
+  height: min(520px, calc(100dvh - var(--header-height) - var(--space-5)));
+  min-height: 300px;
   overflow: hidden;
 }
 
@@ -85,7 +88,9 @@
 
 #chatbox {
   flex: 1;
+  min-height: 0; /* lets the flex child scroll instead of growing the card */
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
@@ -100,6 +105,8 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere; /* long URLs / policy names wrap instead of widening the bubble */
+  min-width: 0;
 }
 
 #chatbox .message.user {
@@ -125,10 +132,13 @@
 
 .input-area input {
   flex: 1;
+  min-width: 0; /* a flex item defaults to min-content; without this the field pushes Send off-screen */
 }
 
 .input-area .btn {
   padding: 11px 16px;
+  flex-shrink: 0;
+  min-width: 44px;
 }
 
 /* ---------------------------------------------------------------------
@@ -178,6 +188,7 @@
 
   .chat-card {
     height: 440px;
+    height: min(440px, calc(100dvh - var(--header-height) - var(--space-5)));
   }
 }
 
@@ -189,9 +200,14 @@
 
   .chat-card {
     height: 400px;
+    height: min(400px, calc(100dvh - var(--header-height) - var(--space-5)));
   }
 
   #chatbox .message {
     max-width: 92%;
+  }
+
+  .quick-topics .quick-topic {
+    min-height: 44px;
   }
 }

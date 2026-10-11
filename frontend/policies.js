@@ -134,6 +134,7 @@
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeModal();
+      trapModalTab(e);
     });
   }
 
@@ -677,12 +678,52 @@
     return d.toLocaleDateString();
   }
 
+  // Dialog behaviour: remember what opened it, lock background scroll, move
+  // focus inside, keep Tab inside while open, restore focus on close.
+  var modalOpener = null;
+
+  function modalIsOpen() {
+    return !els.modalOverlay.hidden;
+  }
+
   function showModal() {
+    if (!modalIsOpen()) {
+      modalOpener = document.activeElement;
+    }
     els.modalOverlay.hidden = false;
+    document.documentElement.classList.add("modal-open");
+    els.modalClose.focus();
   }
 
   function closeModal() {
+    if (!modalIsOpen()) return;
     els.modalOverlay.hidden = true;
+    document.documentElement.classList.remove("modal-open");
+    var opener = modalOpener;
+    modalOpener = null;
+    if (opener && typeof opener.focus === "function" && document.contains(opener)) {
+      opener.focus();
+    }
+  }
+
+  function trapModalTab(e) {
+    if (e.key !== "Tab" || !modalIsOpen()) return;
+    var focusable = els.modalOverlay.querySelectorAll(
+      'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    } else if (!els.modalOverlay.contains(document.activeElement)) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 
   /* ------------------------------------------------------------------

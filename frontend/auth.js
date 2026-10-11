@@ -24,6 +24,22 @@ function toggle() {
   document.getElementById("container").classList.toggle("active");
 }
 
+// Phase 16: the auth panels are not <form>s, so the phone keyboard's
+// "Go"/Enter key did nothing. Enter in a field now clicks that panel's own
+// primary button - the SAME handler (login/signup/forgotPassword/
+// resetPassword) with the SAME validation - so no auth behaviour changes.
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Enter" || e.isComposing) return;
+  const field = e.target;
+  if (!field || field.tagName !== "INPUT") return;
+  const panel = field.closest(".form-container");
+  const submit = panel && panel.querySelector("button.btn-primary");
+  if (submit) {
+    e.preventDefault();
+    submit.click();
+  }
+});
+
 // Phase 15: dashboard.html sends signed-out visitors to
 // login.html?next=dashboard.html. `next` is matched against this exact
 // allowlist - never used as a URL - so it cannot become an open redirect.

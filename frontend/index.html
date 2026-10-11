@@ -52,11 +52,13 @@
                         </button>
                     </div>
 
-                    <div class="quick-topics">
-                        <span onclick="sendCategory('agriculture')">Agriculture</span>
-                        <span onclick="sendCategory('education')">Education</span>
-                        <span onclick="sendCategory('technology')">Technology</span>
-                        <span onclick="sendCategory('economy')">Economy</span>
+                    <!-- Real buttons (were clickable spans): keyboard- and
+                         screen-reader-operable, with a proper touch target. -->
+                    <div class="quick-topics" role="group" aria-label="Quick topics">
+                        <button type="button" class="quick-topic" onclick="sendCategory('agriculture')">Agriculture</button>
+                        <button type="button" class="quick-topic" onclick="sendCategory('education')">Education</button>
+                        <button type="button" class="quick-topic" onclick="sendCategory('technology')">Technology</button>
+                        <button type="button" class="quick-topic" onclick="sendCategory('economy')">Economy</button>
                     </div>
                 </div>
 
@@ -69,10 +71,10 @@
                             <span class="badge"><span class="badge-dot"></span>Policy Assistant · Online</span>
                         </div>
 
-                        <div id="chatbox"></div>
+                        <div id="chatbox" role="log" aria-live="polite" aria-label="Conversation with the policy assistant"></div>
 
                         <div class="input-area">
-                            <input type="text" id="userInput" placeholder="Ask about policies...">
+                            <input type="text" id="userInput" placeholder="Ask about policies..." aria-label="Your question" autocomplete="off" enterkeyhint="send">
                             <button onclick="sendMessage()" class="btn btn-primary" aria-label="Send message">➤</button>
                         </div>
 

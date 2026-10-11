@@ -337,3 +337,10 @@
 .dash-empty a.btn {
   text-decoration: none;
 }
+
+/* Touch: card actions meet the 44px guideline (desktop keeps the compact 36px). */
+@media (max-width: 900px), (pointer: coarse) {
+  .dash-item__actions .btn {
+    min-height: 44px;
+  }
+}

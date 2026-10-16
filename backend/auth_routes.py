@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
+import rate_limit
 from config import Config
 from database import db
 from email_service import EmailSendError, send_password_reset_email, send_verification_email
@@ -84,6 +85,19 @@ _GENERIC_LOGIN_ERROR = ("Invalid email or password", 401)
 _DUMMY_PASSWORD_HASH = hash_password("dummy-password-never-used-for-timing-safety-only")
 
 
+def _json_object():
+    """The request body as a dict - {} for a missing, unparsable OR
+    non-object body (a JSON array/string/number used to reach
+    `data.get(...)` and raise AttributeError -> HTTP 500; confirmed by test
+    before Phase 18)."""
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
+def _rate_limited(retry_after):
+    return rate_limit.too_many_requests(retry_after) if retry_after else None
+
+
 def _database_unavailable_response(feature):
     return jsonify({
         "error": f"{feature} is temporarily unavailable: no database is configured."
@@ -94,6 +108,10 @@ def _database_unavailable_response(feature):
 def register():
     if not Config.DATABASE_URL:
         return _database_unavailable_response("Registration")
+
+    blocked = _rate_limited(rate_limit.hit("register:ip", rate_limit.client_ip()))
+    if blocked:
+        return blocked
 
     # silent=True: an unparsable/missing JSON body becomes None here and
     # is reported as a normal validation error below, rather than the
@@ -171,6 +189,10 @@ def verify_email():
     if not Config.DATABASE_URL:
         return _database_unavailable_response("Email verification")
 
+    blocked = _rate_limited(rate_limit.hit("verify:ip", rate_limit.client_ip()))
+    if blocked:
+        return blocked
+
     raw_token = request.args.get("token")
     if not raw_token:
         message, status = _GENERIC_TOKEN_ERROR
@@ -222,8 +244,20 @@ def resend_verification():
     if not Config.DATABASE_URL:
         return _database_unavailable_response("Resending verification email")
 
-    data = request.get_json(silent=True) or {}
+    blocked = _rate_limited(rate_limit.hit("resend:ip", rate_limit.client_ip()))
+    if blocked:
+        return blocked
+
+    data = _json_object()
     email = data.get("email")
+
+    # Limited per target address whether or not that account exists, so a
+    # 429 reveals nothing - and so this endpoint cannot be used to flood
+    # one person's inbox with verification emails.
+    if isinstance(email, str) and email.strip() and len(email) <= MAX_EMAIL_LENGTH:
+        blocked = _rate_limited(rate_limit.hit("resend:email", normalize_email(email)))
+        if blocked:
+            return blocked
 
     # Always the same response regardless of what's actually true, so a
     # caller can't use this endpoint to discover which emails are
@@ -284,9 +318,22 @@ def login():
     if not Config.DATABASE_URL:
         return _database_unavailable_response("Login")
 
-    data = request.get_json(silent=True) or {}
+    data = _json_object()
     email = data.get("email")
     password = data.get("password")
+
+    # Rate limits (see backend/rate_limit.py) are checked BEFORE any
+    # password work: a blocked client gets no guessing oracle and costs no
+    # Argon2 CPU. Keys use the normalised email whether or not the account
+    # exists, so the 429 pattern is identical for real and fake accounts.
+    ip = rate_limit.client_ip()
+    limits = [("login:ip", ip)]
+    if isinstance(email, str) and email.strip() and len(email) <= MAX_EMAIL_LENGTH:
+        email_key = normalize_email(email)
+        limits += [("login:pair", f"{ip}|{email_key}"), ("login:account", email_key)]
+    blocked = _rate_limited(rate_limit.check_many(limits))
+    if blocked:
+        return blocked
 
     message, status = _GENERIC_LOGIN_ERROR
     generic_error = jsonify({"error": message}), status
@@ -299,6 +346,7 @@ def login():
         not isinstance(email, str) or not email.strip() or len(email) > MAX_EMAIL_LENGTH
         or not isinstance(password, str) or not password or len(password) > MAX_PASSWORD_LENGTH
     ):
+        rate_limit.record("login:ip", ip)
         return generic_error
 
     user = User.query.filter_by(email=normalize_email(email)).first()
@@ -310,6 +358,7 @@ def login():
     password_matches = verify_password(password, password_hash_to_check)
 
     if user is None or not password_matches:
+        rate_limit.record_many(limits)
         return generic_error
 
     if not user.email_verified:
@@ -335,6 +384,19 @@ def login():
 
     db.session.add(session_row)
     db.session.add(user)
+
+    # A browser that logs in while still carrying an older session cookie
+    # (shared computer, switching accounts) must not leave that older
+    # session alive: revoke the one it presented, if it is still active.
+    presented = request.cookies.get(Config.SESSION_COOKIE_NAME)
+    if presented:
+        old_session = UserSession.query.filter_by(
+            session_token_hash=hash_session_token(presented), revoked_at=None
+        ).first()
+        if old_session is not None:
+            old_session.revoked_at = datetime.now(timezone.utc)
+            db.session.add(old_session)
+
     db.session.commit()
 
     response = jsonify({
@@ -402,8 +464,19 @@ def forgot_password():
     if not Config.DATABASE_URL:
         return _database_unavailable_response("Password reset")
 
-    data = request.get_json(silent=True) or {}
+    blocked = _rate_limited(rate_limit.hit("forgot:ip", rate_limit.client_ip()))
+    if blocked:
+        return blocked
+
+    data = _json_object()
     email = data.get("email")
+
+    # Per target address, existing account or not (no enumeration) - stops
+    # this endpoint being used to flood one person's inbox.
+    if isinstance(email, str) and email.strip() and len(email) <= MAX_EMAIL_LENGTH:
+        blocked = _rate_limited(rate_limit.hit("forgot:email", normalize_email(email)))
+        if blocked:
+            return blocked
 
     generic_response = jsonify(_GENERIC_FORGOT_PASSWORD_RESPONSE), 200
 
@@ -460,7 +533,11 @@ def reset_password():
     if not Config.DATABASE_URL:
         return _database_unavailable_response("Password reset")
 
-    data = request.get_json(silent=True) or {}
+    blocked = _rate_limited(rate_limit.hit("reset:ip", rate_limit.client_ip()))
+    if blocked:
+        return blocked
+
+    data = _json_object()
     raw_token = data.get("token")
     new_password = data.get("password")
 

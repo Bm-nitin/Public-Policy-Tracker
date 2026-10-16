@@ -38,6 +38,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
+import rate_limit
 from config import Config
 from database import db
 from models import UserSession
@@ -160,7 +161,15 @@ def change_password():
 
     user = g.current_user
 
+    # Wrong-current-password attempts are limited per ACCOUNT (a stolen
+    # session must not become an unlimited oracle for the real password).
+    # Checked before the Argon2 verification; only failures are counted.
+    blocked_for = rate_limit.check("chpw:user", str(user.id))
+    if blocked_for:
+        return rate_limit.too_many_requests(blocked_for)
+
     if not verify_password(current_password, user.password_hash):
+        rate_limit.record("chpw:user", str(user.id))
         return _error("Current password is incorrect", 400)
 
     if new_password == current_password:

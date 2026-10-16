@@ -361,6 +361,88 @@ single-use tokens
 CORS
 etc.
 
+## Security Hardening (Phase 18)
+
+**Rate limiting** (`backend/rate_limit.py`) is stored in PostgreSQL
+(`rate_limit_events`, migration `d4f1b7a92c6e`) so it holds across gunicorn
+workers and restarts - an in-process counter would not. Over a limit the API
+answers `429` with `{"error": ..., "retry_after": seconds}` and a
+`Retry-After` header. A block ends by itself when the window ends; blocked
+attempts are not counted, so hammering cannot extend it; nothing is ever
+locked permanently.
+
+| Rule | Limit | Counts |
+|---|---|---|
+| Login, per address + account | 5 / 15 min | failures |
+| Login, per address (many accounts) | 20 / 15 min | failures |
+| Login, per account (many addresses) | 30 / hour | failures |
+| Register, per address | 10 / hour | attempts |
+| Forgot password / resend verification, per address | 10 / hour | attempts |
+| Forgot password, per target email | 3 / hour | attempts |
+| Resend verification, per target email | 3 / hour | attempts |
+| Reset password, per address | 20 / hour | attempts |
+| Verify email, per address | 60 / 15 min | attempts |
+| Change password, per account | 5 / 15 min | failures |
+| `/chat`, per address | 20 / minute and 200 / hour | requests |
+
+Per-email limits apply whether or not the account exists, so a 429 never
+reveals which accounts exist. The per-account login cap (30) is deliberately
+higher than one address can ever reach (5 per 15 min = 20/hour), so a single
+attacker cannot lock the real user out.
+
+**Cross-site request protection.** The session cookie is `SameSite=None`
+(frontend and API are on different sites). `backend/security_http.py`
+therefore rejects (`403`) any POST/PATCH/PUT/DELETE that carries the session
+cookie and a browser `Origin` (or `Referer`) other than `CORS_ORIGINS` /
+`FRONTEND_URL`. Requests without the cookie (login, register, `/chat`) are
+unaffected. Request bodies over `MAX_REQUEST_BYTES` (64 KB) get `413`;
+`/chat` messages over `MAX_CHAT_MESSAGE_CHARS` (2000) get `400`. API responses
+carry `nosniff`, `Referrer-Policy: no-referrer`, an API-only CSP, HSTS (when
+`SESSION_COOKIE_SECURE`) and, on every private endpoint, `Cache-Control:
+no-store`. User chat text is no longer written to the logs.
+
+### Deployment checklist (backend, Render)
+
+1. Apply the migration: `flask db upgrade` (creates `rate_limit_events`).
+   Until it runs the limiter **fails open** (logged), so login keeps working
+   but is unprotected.
+2. `TRUSTED_PROXY_COUNT=1` - Render puts one proxy in front of the app. With
+   the default `0`, every visitor appears to come from Render's proxy
+   address and per-address limits would be shared by everyone. With `1`,
+   only the address Render's proxy itself appended to `X-Forwarded-For` is
+   used; anything a client sends is ignored.
+3. `APP_ENV=production` - the app then refuses to start if `CORS_ORIGINS` is
+   `*`, the cookie is not `Secure`, there is no `DATABASE_URL`, or
+   `RATE_LIMIT_ENABLED=false`. Leave it unset for local development.
+4. Keep `CORS_ORIGINS` set to the exact frontend origin and
+   `SESSION_COOKIE_SECURE=true` (`SameSite=None` requires it).
+
+### Static frontend headers (Render static site -> Headers)
+
+Not set by the app (the frontend is a separate static site). Recommended for
+path `/*`; verified against every page in a real browser (inline scripts and
+`onclick` handlers are why `'unsafe-inline'` is needed for scripts):
+
+```
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://policy-tracker-b8a3.onrender.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+```
+
+### Known limits
+
+- Registration still says "an account with this email already exists"
+  (a deliberate usability trade-off); the registration limit slows
+  enumeration but does not prevent it.
+- A distributed attacker (many addresses) can keep one account's login
+  temporarily throttled; the real user recovers when the window ends.
+- `/chat` rate limiting needs `DATABASE_URL` (the table); without it `/chat`
+  is unlimited. It is not a substitute for a CDN/WAF against volumetric floods.
+- Run `pip-audit` in the deploy environment; dependency versions are only
+  lower-bounded in `requirements.txt`.
+
 ## Limitations
 
 Policy data freshness

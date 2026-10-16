@@ -131,6 +131,59 @@ class Config:
     PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRY_MINUTES", 30))
     PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = int(os.getenv("PASSWORD_RESET_RESEND_COOLDOWN_SECONDS", 60))
 
+    # --- Security hardening (Phase 18) ---
+    # APP_ENV=production opts in to STRICT startup checks (see
+    # enforce_production() below): the app refuses to start with an unsafe
+    # security configuration instead of merely warning. Unset (the default)
+    # leaves local development and the test suite exactly as before.
+    APP_ENV = os.getenv("APP_ENV", "").strip().lower()
+
+    # Database-backed rate limiting (backend/rate_limit.py). Needs the
+    # rate_limit_events table (migration d4f1b7a92c6e) and DATABASE_URL.
+    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").strip().lower() not in ("false", "0", "no")
+
+    # How many reverse proxies sit in front of the app and append to
+    # X-Forwarded-For (Render: 1). 0 = none = trust only the TCP peer
+    # address and IGNORE X-Forwarded-For entirely, so a client cannot spoof
+    # its IP. N > 0 = take the Nth entry from the RIGHT (the one our own
+    # proxy appended) - anything a client prepends further left is ignored.
+    # Set it wrongly low behind a proxy and every visitor shares the
+    # proxy's address (IP limits then throttle everyone together).
+    TRUSTED_PROXY_COUNT = max(0, int(os.getenv("TRUSTED_PROXY_COUNT", 0)))
+
+    # Hard ceilings so one request cannot make the server buffer/parse or
+    # forward unbounded data (Gemini calls are billed per token).
+    MAX_REQUEST_BYTES = int(os.getenv("MAX_REQUEST_BYTES", 65536))
+    MAX_CHAT_MESSAGE_CHARS = int(os.getenv("MAX_CHAT_MESSAGE_CHARS", 2000))
+
+    @classmethod
+    def production_problems(cls):
+        """Unsafe settings that must not reach production. Pure function
+        of Config (no side effects) so it is directly unit-testable."""
+        problems = []
+        if cls.CORS_ORIGINS == "*":
+            problems.append("CORS_ORIGINS must be set to the real frontend origin(s), not '*'")
+        if not cls.SESSION_COOKIE_SECURE:
+            problems.append("SESSION_COOKIE_SECURE must be true (the session cookie must only travel over HTTPS)")
+        if not cls.DATABASE_URL:
+            problems.append("DATABASE_URL must be set (authentication and rate limiting are database-backed)")
+        if not cls.RATE_LIMIT_ENABLED:
+            problems.append("RATE_LIMIT_ENABLED must not be false")
+        return problems
+
+    @classmethod
+    def enforce_production(cls):
+        """With APP_ENV=production, raise at startup if production_problems()
+        is non-empty - failing closed beats serving with unsafe settings.
+        With APP_ENV unset this does nothing."""
+        if cls.APP_ENV != "production":
+            return
+        problems = cls.production_problems()
+        if problems:
+            raise RuntimeError(
+                "Refusing to start with APP_ENV=production: " + "; ".join(problems)
+            )
+
     @classmethod
     def validate(cls):
         """Non-fatal startup checks. Logs actionable warnings but never
@@ -214,6 +267,27 @@ class Config:
                 "combining a wildcard origin with credentials. Cross-origin "
                 "login will not work until CORS_ORIGINS is set to your "
                 "actual frontend origin(s)."
+            )
+
+        if not cls.RATE_LIMIT_ENABLED:
+            warnings.append(
+                "RATE_LIMIT_ENABLED is false - login, registration, password "
+                "reset, password change and /chat are NOT rate limited."
+            )
+
+        if os.getenv("RENDER") and cls.TRUSTED_PROXY_COUNT == 0:
+            warnings.append(
+                "Running on Render but TRUSTED_PROXY_COUNT is 0 - every client "
+                "will appear to come from Render's proxy address, so per-IP "
+                "rate limits would be shared by ALL visitors. Set "
+                "TRUSTED_PROXY_COUNT=1."
+            )
+
+        if cls.APP_ENV != "production":
+            warnings.append(
+                "APP_ENV is not 'production' - strict startup security checks "
+                "(Config.enforce_production) are off. Set APP_ENV=production "
+                "on the deployed backend."
             )
 
         for warning in warnings:

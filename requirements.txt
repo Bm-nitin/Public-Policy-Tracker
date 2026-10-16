@@ -1,5 +1,9 @@
 flask>=3.0
-flask-cors>=4.0
+# Phase 18: floor raised from 4.0 - older flask-cors releases have published
+# CORS vulnerabilities (path-matching / header handling, fixed up to 6.0.0).
+# Confirm with `pip-audit` in the deploy environment (no network was available
+# to verify this offline). Our use is a single resources={r"/*": ...} rule.
+flask-cors>=6.0.0
 python-dotenv>=1.0
 flask-sqlalchemy>=3.1
 flask-migrate>=4.0
@@ -20,4 +24,6 @@ psycopg[binary]>=3.1
 # Before relying on this in a new deploy, run `pip freeze` in the actual
 # target environment and pin the exact working version here.
 google-genai
-gunicorn>=21.0
+# Phase 18: floor raised from 21.0 - gunicorn < 22 / < 23 have HTTP request-
+# smuggling CVEs (CVE-2024-1135, CVE-2024-6827), fixed in 22.0.0 / 23.0.0.
+gunicorn>=23.0.0

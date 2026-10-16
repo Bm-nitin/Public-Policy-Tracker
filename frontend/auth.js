@@ -158,7 +158,11 @@ async function forgotPassword() {
     // or not the account exists - shown to the user as-is, not
     // reinterpreted or supplemented with any "does this account exist"
     // logic on the frontend.
-    statusEl.textContent = data.message || "If an account with that email exists, a password reset link has been sent.";
+    // Phase 18: rate limited (429) is NOT "link sent" - say so instead of
+    // falling through to the reassuring default below.
+    statusEl.textContent = response.status === 429
+      ? (data.error || "Too many requests. Please try again later.")
+      : (data.message || "If an account with that email exists, a password reset link has been sent.");
   } catch (err) {
     statusEl.textContent = "Could not reach the server. Please try again.";
   }

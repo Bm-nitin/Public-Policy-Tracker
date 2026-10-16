@@ -40,6 +40,12 @@
   var SAVE_ERROR = "Something went wrong. Please try again.";
   var NETWORK_ERROR = "Couldn't reach the server. Check your connection and try again.";
 
+  // Phase 18: the backend rate-limits wrong-password attempts (429).
+  function limitedMessage(seconds) {
+    var minutes = Math.max(1, Math.ceil((typeof seconds === "number" && isFinite(seconds) ? seconds : 60) / 60));
+    return "Too many attempts. Please try again in about " + minutes + (minutes === 1 ? " minute." : " minutes.");
+  }
+
   /* ------------------------------------------------------------------
      PURE HELPERS (also exported for the Node validation script)
      ------------------------------------------------------------------ */
@@ -139,6 +145,9 @@
           var parsed = null;
           try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
           if (response.status === 400) return { kind: "invalid", messages: safeMessages(parsed) };
+          if (response.status === 429) {
+            return { kind: "limited", retryAfter: plainObject(parsed) ? parsed.retry_after : null };
+          }
           if (!response.ok) return { kind: "error" };
           if (!plainObject(parsed)) return { kind: "error" };
           return { kind: "ok", data: parsed };
@@ -294,7 +303,7 @@
         byId("accName").focus();
         return;
       }
-      setStatus("profileStatus", "error", result.network ? NETWORK_ERROR : SAVE_ERROR);
+      setStatus("profileStatus", "error", result.kind === "limited" ? limitedMessage(result.retryAfter) : result.network ? NETWORK_ERROR : SAVE_ERROR);
     });
   }
 
@@ -340,7 +349,7 @@
         }
         return;
       }
-      setStatus("passwordStatus", "error", result.network ? NETWORK_ERROR : SAVE_ERROR);
+      setStatus("passwordStatus", "error", result.kind === "limited" ? limitedMessage(result.retryAfter) : result.network ? NETWORK_ERROR : SAVE_ERROR);
     });
   }
 
@@ -375,6 +384,7 @@
       validatePasswordChange: validatePasswordChange,
       validateProfile: validateProfile,
       safeMessages: safeMessages,
+      limitedMessage: limitedMessage,
       formatDate: formatDate,
     };
   }

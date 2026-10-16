@@ -8,6 +8,9 @@ from policies_routes import policies_bp
 from conversations_routes import conversations_bp
 from saved_policies_routes import saved_policies_bp
 from account_routes import account_bp
+from security_http import init_security
+import rate_limit
+import sys
 from dashboard_routes import dashboard_bp
 from chatbot import get_response
 from policy_loader import load_policies
@@ -20,16 +23,33 @@ app.secret_key = Config.SECRET_KEY
 # starting, preserving the existing graceful-degradation behavior.
 Config.validate()
 
+# Phase 18: with APP_ENV=production, refuse to start on an unsafe security
+# configuration (CORS '*', insecure cookie, no database, rate limiting off).
+# A no-op when APP_ENV is unset, so local development is unchanged.
+Config.enforce_production()
+
 # Allow frontend requests. Defaults to "*" (same as before) unless
 # CORS_ORIGINS is set in .env. supports_credentials is only enabled when
 # a specific origin is configured - browsers forbid combining a wildcard
 # origin with credentialed requests (the login/logout/me cookie), so
 # leaving CORS_ORIGINS="*" simply means cross-origin login won't work
 # until a real origin is set (Config.validate() warns about this).
-_cors_kwargs = {"origins": Config.CORS_ORIGINS}
+_cors_kwargs = {
+    "origins": Config.CORS_ORIGINS,
+    # Phase 18: only what the frontend actually sends/uses (was: every method,
+    # any request header reflected back).
+    "methods": ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Accept"],
+    "expose_headers": ["Retry-After"],
+    "max_age": 600,
+}
 if Config.CORS_ORIGINS != "*":
     _cors_kwargs["supports_credentials"] = True
 CORS(app, resources={r"/*": _cors_kwargs})
+
+# Phase 18: trusted-proxy handling, request-size ceiling, CSRF origin check
+# for cookie-authenticated requests, and security response headers.
+init_security(app)
 
 # Database (Phase 2 foundation). Only wired up when DATABASE_URL is
 # actually set, so the app keeps importing and every pre-Phase-3 route
@@ -93,6 +113,13 @@ def home():
     return "Track Public Policy Chatbot is running"
 
 
+def _log_chat_persist_failure():
+    """Called from inside an `except` block: logs only the exception class. The full
+    traceback/message of a database error embeds the SQL parameters, i.e. the
+    user's chat text, which must not reach the logs (Phase 18)."""
+    print(f"[CHAT] could not persist message ({sys.exc_info()[0].__name__})")
+
+
 # Chat API
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -134,12 +161,25 @@ def chat():
     anything else.
     """
     try:
+        # Phase 18: public endpoint that spends Gemini quota - rate limited per
+        # client address (needs DATABASE_URL; see backend/rate_limit.py).
+        retry_after = (rate_limit.hit('chat:ip:min', rate_limit.client_ip())
+                       or rate_limit.hit('chat:ip:hour', rate_limit.client_ip()))
+        if retry_after:
+            return rate_limit.too_many_requests(
+                retry_after, {"reply": "You're sending messages too quickly. Please wait a moment and try again."})
+
         data = request.get_json()
 
         if not data or 'message' not in data:
             return jsonify({"reply": "Invalid request"}), 400
 
         user_input = data['message']
+
+        if not isinstance(user_input, str):
+            return jsonify({"reply": "Invalid request"}), 400
+        if len(user_input) > Config.MAX_CHAT_MESSAGE_CHARS:
+            return jsonify({"reply": "Message too long"}), 400
 
         if not user_input.strip():
             return jsonify({"reply": "Empty message"}), 400
@@ -171,20 +211,22 @@ def chat():
             except Exception:
                 # Never let a persistence problem block the reply itself -
                 # see the docstring above. Logged server-side only.
-                traceback.print_exc()
+                _log_chat_persist_failure()
 
-        print(f"[INPUT] {user_input}")
+        # Lengths only: user text (often personal) and raw model output are not logged,
+        # and a message containing newlines can no longer forge log lines.
+        print(f"[CHAT] input_chars={len(user_input)}")
 
         result = get_response(user_input)
 
-        print(f"[OUTPUT] {result}")
+        print(f"[CHAT] output_chars={len(str(result))}")
 
         if conversation is not None:
             try:
                 from conversations_service import add_message
                 add_message(current_user.id, conversation.id, "assistant", result)
             except Exception:
-                traceback.print_exc()
+                _log_chat_persist_failure()
 
         return jsonify({"reply": result})
 

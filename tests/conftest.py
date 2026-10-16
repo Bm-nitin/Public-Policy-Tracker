@@ -219,6 +219,14 @@ except ImportError:
             is bound, never interpolated into the SQL string itself)."""
             return _ShimBinaryExpression(f"LOWER({self.name}) LIKE LOWER(?)", [pattern])
 
+        def __lt__(self, value):
+            """Real SQLAlchemy: Model.column < value. Phase 18: used by
+            backend/rate_limit.py to purge rows older than the longest
+            rate-limit window in one DELETE. Parameterized like in_()."""
+            if hasattr(value, "isoformat"):
+                value = value.isoformat()   # same serialisation the shim uses on INSERT/UPDATE
+            return _ShimBinaryExpression(f"{self.name} < ?", [value])
+
         def in_(self, values):
             """Real SQLAlchemy: Model.column.in_([1, 2, 3]) - used by
             backend/dashboard_service.py to count/fetch a user's
@@ -420,6 +428,16 @@ except ImportError:
         def __init__(self, *columns, name=None):
             self.columns = columns
             self.name = name
+
+    class _ShimIndex:
+        """Minimal stand-in for sqlalchemy.Index (Phase 18: the
+        rate_limit_events lookup index in models.py). Indexes are a pure
+        performance feature - they do not change results - so the offline
+        in-memory database accepts and ignores them; the real index is
+        created by the Alembic migration / real SQLAlchemy."""
+        def __init__(self, name, *columns, **kwargs):
+            self.name = name
+            self.columns = columns
 
     class _ShimTableColumnType:
         """Minimal stand-in for a SQLAlchemy type object - just enough
@@ -662,6 +680,7 @@ except ImportError:
             self.Boolean = _ShimColType("BOOL")
             self.DateTime = lambda timezone=False: _ShimColType("DATETIME")
             self.UniqueConstraint = _ShimUniqueConstraint
+            self.Index = _ShimIndex
             self.Model = _make_model_base(self)
 
         def init_app(self, app):
@@ -1063,3 +1082,14 @@ def valid_registration_payload():
         "email": "ada@example.com",
         "password": "correct-horse-battery-staple",
     }
+
+
+@pytest.fixture(autouse=True)
+def _rate_limiting_off_by_default(monkeypatch):
+    """Phase 18: the production default is rate limiting ON, and the
+    existing suite legitimately hammers login/register/chat from one fake
+    address far past those limits. Switch it off for every test unless a
+    test opts in (tests/test_security_hardening.py's `limits_on` fixture),
+    so existing tests keep testing what they were written to test."""
+    import config
+    monkeypatch.setattr(config.Config, "RATE_LIMIT_ENABLED", False)

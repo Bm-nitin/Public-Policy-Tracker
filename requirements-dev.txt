@@ -2,4 +2,7 @@
 # Install alongside requirements.txt: pip install -r requirements.txt -r requirements-dev.txt
 -c constraints.txt
 
+coverage
+# The locked filelock release used by pip-audit requires Python 3.11 or newer.
+pip-audit; python_version >= "3.11"
 pytest>=9.0.3,<10

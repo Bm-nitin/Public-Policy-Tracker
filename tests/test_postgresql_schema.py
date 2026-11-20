@@ -7,6 +7,7 @@ use DATABASE_URL and never run migrations against an existing installation.
 from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
+import shutil
 import socket
 import subprocess
 
@@ -45,15 +46,17 @@ def postgres_cluster(tmp_path_factory):
     bin_dir = Path(bin_path).resolve(strict=True)
     root = tmp_path_factory.mktemp("policy-postgresql")
     data = root / "data"
-    _pg_command(bin_dir, "initdb", "-D", data, "-U", "phase19c_test", "-A", "trust", "--no-locale", "-E", "UTF8")
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
 
     log = root / "postgres.log"
     try:
+        _pg_command(bin_dir, "initdb", "-D", data, "-U", "phase19c_test", "-A", "trust", "--no-locale", "-E", "UTF8")
+        # The fixture uses TCP on both platforms. Avoid the system socket
+        # directory, which is usually writable only by PostgreSQL on Linux.
         _pg_command(bin_dir, "pg_ctl", "start", "-D", data, "-l", log, "-w", "-t", "20",
-                    "-o", f"-h 127.0.0.1 -p {port}")
+                    "-o", f"-h 127.0.0.1 -p {port} -c unix_socket_directories=")
         with psycopg.connect(
             host="127.0.0.1", hostaddr="127.0.0.1", port=port, dbname="postgres",
             user="phase19c_test", sslmode="disable", autocommit=True, connect_timeout=5,
@@ -62,8 +65,13 @@ def postgres_cluster(tmp_path_factory):
             assert Path(actual_directory).resolve() == data.resolve()
             yield admin, bin_dir, port
     finally:
-        if (data / "postmaster.pid").exists():
+        pid_file = data / "postmaster.pid"
+        if pid_file.exists():
             _pg_command(bin_dir, "pg_ctl", "stop", "-D", data, "-m", "fast", "-w", "-t", "20")
+        assert not pid_file.exists(), "PostgreSQL did not stop"
+        if data.exists():
+            assert data.resolve().parent == root.resolve()
+            shutil.rmtree(data)
 
 
 def _isolated_app(cluster, name):

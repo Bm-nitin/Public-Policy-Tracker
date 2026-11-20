@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests, PostgreSQL, coverage and dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # Tests use mocks, SQLite, and a local PostgreSQL cluster started by pytest.
+      PYTHON_DOTENV_DISABLED: "1"
+      DATABASE_URL: ""
+      GEMINI_API_KEY: ""
+      GOOGLE_API_KEY: ""
+      API_KEY: ""
+      MAIL_HOST: ""
+      APP_ENV: ""
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12.16'
+          cache: pip
+          cache-dependency-path: |
+            constraints.txt
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Prepare report and scratch paths
+        run: |
+          mkdir -p "$RUNNER_TEMP/policy-tracker-reports"
+          {
+            echo "POLICY_REPORTS=$RUNNER_TEMP/policy-tracker-reports"
+            echo "POLICY_PYTEST_TEMP=$RUNNER_TEMP/policy-tracker-pytest"
+            echo "COVERAGE_FILE=$RUNNER_TEMP/policy-tracker.coverage"
+          } >> "$GITHUB_ENV"
+
+      - name: Install locked Python dependencies
+        id: dependencies
+        run: |
+          python -m pip install --only-binary=:all: -r requirements.txt -r requirements-dev.txt
+          python -m pip check
+
+      - name: Prepare PostgreSQL 16 binaries
+        run: |
+          pg_bin=/usr/lib/postgresql/16/bin
+          if [[ ! -x "$pg_bin/initdb" ]]; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends postgresql-16
+          fi
+          for program in postgres initdb pg_ctl pg_dump pg_restore; do
+            test -x "$pg_bin/$program"
+          done
+          "$pg_bin/postgres" --version
+          echo "POLICY_TRACKER_TEST_PG_BIN=$pg_bin" >> "$GITHUB_ENV"
+
+      - name: Run full pytest suite with branch tracking
+        id: tests
+        run: |
+          python -m coverage run --branch --source=backend -m pytest -ra \
+            --basetemp="$POLICY_PYTEST_TEMP" --junitxml="$POLICY_REPORTS/pytest.xml"
+
+      - name: Verify PostgreSQL ran and cleaned up
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        run: |
+          shopt -s nullglob
+          cluster_logs=("$POLICY_PYTEST_TEMP"/policy-postgresql*/postgres.log)
+          if (( ${#cluster_logs[@]} == 0 )); then
+            echo "::error::The PostgreSQL tests did not start their temporary cluster."
+            exit 1
+          fi
+          for cluster in "$POLICY_PYTEST_TEMP"/policy-postgresql*/data; do
+            echo "::error::Temporary PostgreSQL data directory still exists after pytest: $cluster"
+            exit 1
+          done
+
+      - name: Report coverage
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
+        run: |
+          python -m coverage report --show-missing --precision=2
+          python -m coverage json -o "$POLICY_REPORTS/coverage.json"
+          jq -r '.totals |
+            "Line coverage: \((.percent_statements_covered * 100 | round) / 100)% (\(.covered_lines)/\(.num_statements))",
+            "Branch coverage: \((.percent_branches_covered * 100 | round) / 100)% (\(.covered_branches)/\(.num_branches))"' \
+            "$POLICY_REPORTS/coverage.json"
+
+      - name: Audit every locked Python version
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          report="$POLICY_REPORTS/dependency-audit.json"
+          status=0
+          python -m pip_audit -r constraints.txt --no-deps --disable-pip --strict \
+            --progress-spinner off --format json --output "$report" || status=$?
+          if [[ ! -f "$report" ]]; then
+            echo "::error::pip-audit did not write an audit report."
+            exit 1
+          fi
+          jq -r '.dependencies[] |
+            if .skip_reason then "Skipped \(.name): \(.skip_reason)"
+            else .name as $name | .version as $version | .vulns[] | "\($name) \($version): \(.id)"
+            end' "$report"
+          jq -e '(.dependencies | length > 0) and all(.dependencies[]; .skip_reason == null)' "$report" > /dev/null
+          exit "$status"
+
+      - name: Upload test and security reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-reports
+          path: ${{ runner.temp }}/policy-tracker-reports
+          if-no-files-found: warn
+          retention-days: 14

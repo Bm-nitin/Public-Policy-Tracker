@@ -1,15 +1,15 @@
 """
 Phase 4: tests for backend/email_service.py.
 
-build_verification_email() / build_verification_url() are pure functions
-and tested directly with real code. send_email() itself (the part that
-would open a real SMTP connection) is exercised only through the
-mock_email_service fixture (see conftest.py) in test_email_verification.py
-- this file never opens a socket.
+The email builders are tested directly. SMTP tests use a mocked server.
 """
+
+import ssl
+from unittest.mock import MagicMock
 
 import pytest
 
+import email_service
 from email_service import (
     EmailSendError,
     build_verification_email,
@@ -25,18 +25,51 @@ def test_send_email_without_mail_host_configured_raises_cleanly(monkeypatch):
         send_email("someone@example.com", "subject", "body")
 
 
+@pytest.fixture
+def smtp_server(monkeypatch):
+    from config import Config
+
+    monkeypatch.setattr(Config, "MAIL_HOST", "smtp.example.com")
+    monkeypatch.setattr(Config, "MAIL_USE_TLS", True)
+    monkeypatch.setattr(Config, "MAIL_USERNAME", "test-sender")
+    monkeypatch.setattr(Config, "MAIL_PASSWORD", "test-password")
+    smtp = MagicMock()
+    monkeypatch.setattr(email_service.smtplib, "SMTP", smtp)
+    return smtp.return_value.__enter__.return_value
+
+
+def test_send_email_verifies_tls_before_smtp_login(smtp_server):
+    send_email("someone@example.com", "subject", "body")
+
+    context = smtp_server.starttls.call_args.kwargs["context"]
+    assert isinstance(context, ssl.SSLContext)
+    assert context.check_hostname
+    assert context.verify_mode == ssl.CERT_REQUIRED
+    assert [call[0] for call in smtp_server.method_calls] == ["starttls", "login", "send_message"]
+
+
+def test_certificate_error_aborts_before_smtp_login(smtp_server):
+    smtp_server.starttls.side_effect = ssl.SSLCertVerificationError("certificate rejected")
+
+    with pytest.raises(EmailSendError, match="Failed to send email"):
+        send_email("someone@example.com", "subject", "body")
+
+    smtp_server.login.assert_not_called()
+    smtp_server.send_message.assert_not_called()
+
+
 def test_build_verification_url_uses_frontend_url_from_config(monkeypatch):
     import config
     monkeypatch.setattr(config.Config, "FRONTEND_URL", "https://app.example.com")
     url = build_verification_url("some-raw-token-value")
-    assert url == "https://app.example.com/verify-email?token=some-raw-token-value"
+    assert url == "https://app.example.com/verify-email.html#token=some-raw-token-value"
 
 
 def test_build_verification_url_strips_trailing_slash(monkeypatch):
     import config
     monkeypatch.setattr(config.Config, "FRONTEND_URL", "https://app.example.com/")
     url = build_verification_url("tok")
-    assert url == "https://app.example.com/verify-email?token=tok"
+    assert url == "https://app.example.com/verify-email.html#token=tok"
 
 
 def test_build_verification_url_without_frontend_url_raises_cleanly(monkeypatch):

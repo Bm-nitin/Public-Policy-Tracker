@@ -697,6 +697,7 @@ _PUBLIC = {
     ("/api/policies/sectors", "GET"), ("/api/policies/categories", "GET"),
     ("/api/policies/sub-categories", "GET"),
     ("/api/auth/register", "POST"), ("/api/auth/verify-email", "GET"),
+    ("/api/auth/verify-email", "POST"),
     ("/api/auth/resend-verification", "POST"), ("/api/auth/login", "POST"),
     ("/api/auth/forgot-password", "POST"), ("/api/auth/reset-password", "POST"),
     ("/api/auth/logout", "POST"),   # public by design: with no session it just clears the cookie
@@ -734,14 +735,20 @@ def test_production_config_refuses_unsafe_settings(monkeypatch):
     monkeypatch.setattr(C, "SESSION_COOKIE_SECURE", True)
     monkeypatch.setattr(C, "DATABASE_URL", "postgresql+psycopg://u:p@h/db")
     monkeypatch.setattr(C, "RATE_LIMIT_ENABLED", True)
+    monkeypatch.setattr(C, "MAIL_HOST", "smtp.example.com")
+    monkeypatch.setattr(C, "MAIL_USE_TLS", True)
+    monkeypatch.setattr(C, "MAIL_USERNAME", "test-user")
+    monkeypatch.setattr(C, "MAIL_PASSWORD", "test-credential")
+    monkeypatch.setattr(C, "MAIL_FROM", "test@example.com")
     assert C.production_problems() == []
 
     monkeypatch.setattr(C, "CORS_ORIGINS", "*")
     monkeypatch.setattr(C, "SESSION_COOKIE_SECURE", False)
     monkeypatch.setattr(C, "DATABASE_URL", None)
     monkeypatch.setattr(C, "RATE_LIMIT_ENABLED", False)
+    monkeypatch.setattr(C, "MAIL_USE_TLS", False)
     problems = " | ".join(C.production_problems())
-    for needle in ("CORS_ORIGINS", "SESSION_COOKIE_SECURE", "DATABASE_URL", "RATE_LIMIT_ENABLED"):
+    for needle in ("CORS_ORIGINS", "SESSION_COOKIE_SECURE", "DATABASE_URL", "RATE_LIMIT_ENABLED", "MAIL_USE_TLS"):
         assert needle in problems
 
     monkeypatch.setattr(C, "APP_ENV", "")

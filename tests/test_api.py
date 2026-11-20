@@ -1,10 +1,10 @@
 """
 Area 5: Flask API (backend/app.py)
 
-Uses Flask's built-in test client - no real server, no network access.
-Expected values (including the 500-on-malformed-JSON behavior below) were
-captured directly from the running app, not assumed.
+Uses Flask's built-in test client with no network access.
 """
+
+import pytest
 
 
 def test_home_route_returns_200_and_text(app_client):
@@ -52,28 +52,25 @@ def test_chat_empty_message_returns_400(app_client):
     assert response.get_json() == {"reply": "Empty message"}
 
 
-def test_chat_no_json_body_at_all_returns_500(app_client):
-    """Characterizes a real bug: request.get_json() raises a werkzeug
-    UnsupportedMediaType/BadRequest HTTPException when no JSON body/content
-    type is sent. Because that exception is an Exception subclass, app.py's
-    broad `except Exception` swallows it and returns the generic 500
-    handler instead of a clean 400. This test locks in the CURRENT (500)
-    behavior; it is a known issue flagged in CURRENT_ARCHITECTURE.md, not
-    something Phase 0.5 is fixing."""
-    response = app_client.post("/chat")
-    assert response.status_code == 500
-    assert response.get_json() == {"reply": "Something went wrong"}
+@pytest.mark.parametrize("body, content_type", [
+    ("", None),
+    ('{"message": "hello"}', "text/plain"),
+    ("not-json{{{", "application/json"),
+    ('["message"]', "application/json"),
+    ('"message"', "application/json"),
+    ("null", "application/json"),
+])
+def test_chat_invalid_json_request_returns_400(app_client, body, content_type):
+    response = app_client.post("/chat", data=body, content_type=content_type)
+    assert response.status_code == 400
+    assert response.get_json() == {"reply": "Invalid request"}
 
 
-def test_chat_malformed_json_body_returns_500(app_client):
-    """Same root cause as the test above: invalid JSON in the body raises
-    a BadRequest inside the try block, which is caught by the generic
-    except and turned into a 500, not a 400."""
-    response = app_client.post(
-        "/chat", data="not-json{{{", content_type="application/json"
-    )
-    assert response.status_code == 500
-    assert response.get_json() == {"reply": "Something went wrong"}
+def test_chat_preserves_body_reader_size_error(app_client, monkeypatch):
+    monkeypatch.setitem(app_client.application.config, "MAX_CONTENT_LENGTH", 32)
+    reply = app_client.post("/chat", json={"message": "hello" * 20})
+    assert reply.status_code == 413
+    assert reply.get_json() == {"error": "Request too large"}
 
 
 def test_chat_response_structure_on_success(app_client):

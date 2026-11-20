@@ -31,7 +31,7 @@ function toggle() {
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Enter" || e.isComposing) return;
   const field = e.target;
-  if (!field || field.tagName !== "INPUT") return;
+  if (!field || field.tagName !== "INPUT" || field.form) return;
   const panel = field.closest(".form-container");
   const submit = panel && panel.querySelector("button.btn-primary");
   if (submit) {
@@ -168,21 +168,22 @@ async function forgotPassword() {
   }
 }
 
-/* RESET PASSWORD (Phase 6) - reset-password.html
- * The raw token travels only in the URL (the credential the user was
- * emailed) - it is read once here and never written to localStorage or
- * sessionStorage. After a successful reset it's cleared from the visible
- * address bar via history.replaceState (a usability/hygiene measure only
- * - the real security controls are server-side expiry, hashing, and
- * single-use enforcement, not hiding the URL). */
+let passwordResetToken = null;
+
+function capturePasswordResetToken() {
+  passwordResetToken = new URLSearchParams(window.location.hash.slice(1)).get("token")
+    || new URLSearchParams(window.location.search).get("token");
+  if (passwordResetToken) history.replaceState(null, "", window.location.pathname);
+}
+
+/** Handles the reset-password form using the token captured on page load. */
 async function resetPassword() {
   const newPasswordField = document.getElementById("newPassword");
   const confirmPasswordField = document.getElementById("confirmPassword");
   const statusEl = document.getElementById("resetStatus");
   if (!newPasswordField || !statusEl) return; // only present on reset-password.html
 
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
+  const token = passwordResetToken;
   if (!token) {
     statusEl.textContent = "This reset link is missing its token. Please request a new one.";
     return;
@@ -211,9 +212,7 @@ async function resetPassword() {
       return;
     }
 
-    // Strip the token from the visible URL now that it's been used -
-    // hygiene only, not a security boundary (see function docstring).
-    history.replaceState(null, "", window.location.pathname);
+    passwordResetToken = null;
 
     statusEl.textContent = (data.message || "Password reset successful.") + " Redirecting to login...";
     // Reset never auto-authenticates (per the backend) - send the user

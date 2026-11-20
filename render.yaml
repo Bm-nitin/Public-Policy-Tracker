@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+previews:
+  generation: "off"
+
+services:
+  - type: web
+    name: public-policy-tracker
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: >-
+      python -m pip install --only-binary=:all: -r requirements.txt && python -m pip check
+    startCommand: >-
+      python -m gunicorn --chdir backend --bind "0.0.0.0:$PORT"
+      --workers 1 --worker-class gthread --threads 2 --timeout 60
+      --forwarded-allow-ips '' --access-logfile -
+      --access-logformat '%(m)s %(U)s %(s)s %(L)s' --error-logfile -
+      'deployment:create_app()'
+    healthCheckPath: /ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.16"
+      - key: PYTHON_DOTENV_DISABLED
+        value: "1"
+      - key: APP_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_POOLER_HOST
+        sync: false
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_COOKIE_SAMESITE
+        value: Lax
+      - key: MAIL_HOST
+        value: smtp.resend.com
+      - key: MAIL_PORT
+        value: "2587"
+      - key: MAIL_USERNAME
+        value: resend
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_USE_TLS
+        value: "true"

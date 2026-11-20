@@ -106,9 +106,9 @@ def create_conversation(user_id, title=None, first_message=None):
     if provided (validated - see _validate_title()); otherwise, if
     `first_message` is given, a deterministic title is derived from it
     (generate_title_from_message()); otherwise DEFAULT_TITLE."""
-    clean_title = _validate_title(title)
-    if clean_title is None:
-        clean_title = generate_title_from_message(first_message) if first_message else DEFAULT_TITLE
+    if first_message is not None and not isinstance(first_message, str):
+        raise ValidationError("first_message must be a string.")
+    clean_title = _validate_title(title) or generate_title_from_message(first_message)
 
     conversation = Conversation(user_id=user_id, title=clean_title)
     db.session.add(conversation)

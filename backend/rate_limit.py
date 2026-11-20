@@ -31,12 +31,12 @@ DESIGN CHOICES THAT MATTER:
     README): such an attacker can keep that account temporarily throttled.
   * IPv6 clients are bucketed by /64 (an attacker typically controls a
     whole /64, so per-address limits would be trivially rotated).
-  * FAIL OPEN on a database error: an outage or an un-applied migration
-    must not take login down. The failure is logged (exception class only)
-    so it is visible; protection is simply absent until it is fixed.
+  * Production returns 503 when the rate-limit store is unavailable.
+    Local development can continue without the store.
   * Disabled (no-op) when RATE_LIMIT_ENABLED is false or no DATABASE_URL.
 
-CLIENT IP: request.remote_addr. app.py wraps the WSGI app in werkzeug's
+CLIENT IP: the public Render entry point uses the edge-set CF-Connecting-IP.
+Other deployments use request.remote_addr. app.py wraps the WSGI app in werkzeug's
 ProxyFix ONLY when TRUSTED_PROXY_COUNT > 0 (see security_http.py), which
 then takes the Nth X-Forwarded-For entry from the right - the one our own
 proxy appended. With 0, X-Forwarded-For is ignored completely, so a client
@@ -52,6 +52,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.exceptions import ServiceUnavailable
 
 from config import Config
 from database import db
@@ -102,6 +103,12 @@ def client_ip():
     """The caller's address as seen by the app (see module docstring for
     the proxy trust model). IPv6 collapses to its /64."""
     raw = request.remote_addr or "unknown"
+    if Config.RENDER_EDGE_HEADERS:
+        # Render's public ingress overwrites this header. Reject malformed values.
+        try:
+            raw = str(ipaddress.ip_address(request.headers.get("CF-Connecting-IP", "")))
+        except ValueError:
+            pass
     try:
         addr = ipaddress.ip_address(raw)
     except ValueError:
@@ -119,13 +126,15 @@ def _key_hash(rule_name, key):
     return hashlib.sha256(f"{rule_name}|{key}".encode("utf-8")).hexdigest()
 
 
-def _log_store_failure(exc):
+def _handle_store_failure(exc):
+    db.session.rollback()
     now = _now()
     last = _last_error_log[0]
     if last is None or (now - last).total_seconds() > 60:
         _last_error_log[0] = now
-        logger.error("rate limit store unavailable (%s) - failing open; "
-                     "is migration d4f1b7a92c6e applied?", type(exc).__name__)
+        logger.error("Rate limit store unavailable (%s)", type(exc).__name__)
+    if Config.APP_ENV == "production":
+        raise ServiceUnavailable() from None
 
 
 def _longest_window():
@@ -173,8 +182,7 @@ def check(rule_name, key):
             return _retry_after(rule_name, fresh, now)
         return 0
     except SQLAlchemyError as exc:
-        db.session.rollback()
-        _log_store_failure(exc)
+        _handle_store_failure(exc)
         return 0
 
 
@@ -186,8 +194,7 @@ def record(rule_name, key):
         db.session.add(RateLimitEvent(bucket=rule_name, key_hash=_key_hash(rule_name, key), created_at=_now()))
         db.session.commit()
     except SQLAlchemyError as exc:
-        db.session.rollback()
-        _log_store_failure(exc)
+        _handle_store_failure(exc)
 
 
 def hit(rule_name, key):

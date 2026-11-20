@@ -132,7 +132,10 @@ def test_reset_link_changes_password_and_revokes_existing_sessions(page, stack):
     user = account(stack, seeded=True)
     sign_in(page, stack, user)
     link = reset_request(page, stack, user)
+    parts = urlsplit(link)
+    assert parts.path == "/reset-password" and not parts.query and bool(parts.fragment)
     open_page(page, stack, link.removeprefix(stack.frontend + "/"))
+    expect(page).to_have_url(f"{stack.frontend}/reset-password")
     password = stack.password()
     page.get_by_label("New password", exact=True).fill(password)
     page.get_by_label("Confirm new password", exact=True).fill(password)
@@ -156,7 +159,7 @@ def test_reset_rejects_invalid_or_expired_links(page, stack, problem):
     if problem == "expired":
         stack.sql("UPDATE password_reset_tokens SET expires_at=now()-interval '1 day'")
     else:
-        link = f"{stack.frontend}/reset-password?{urlencode({'token': stack.password()})}"
+        link = f"{stack.frontend}/reset-password#{urlencode({'token': stack.password()})}"
     open_page(page, stack, link.removeprefix(stack.frontend + "/"))
     password = stack.password()
     page.get_by_label("New password", exact=True).fill(password)

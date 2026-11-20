@@ -189,8 +189,6 @@ def call_generative_ai(user_input):
         )
 
     try:
-        print(f"[AI REQUEST] {user_input}")
-
         response = client.models.generate_content(
             model=Config.GEMINI_MODEL,
             contents=f"""
@@ -223,7 +221,7 @@ User question:
         return clean_ai_response(raw)
 
     except Exception as e:
-        print("[AI ERROR]", str(e))
+        print(f"[AI ERROR] Gemini request failed ({type(e).__name__})")
 
         return (
             "AI assistance is currently unavailable. "
@@ -305,10 +303,10 @@ def get_grounded_response(user_input):
         from gemini_service import GeminiServiceError, generate_grounded_response
         reply = generate_grounded_response(user_input, context, GROUNDING_SYSTEM_INSTRUCTION)
         return clean_ai_response(reply)
-    except GeminiServiceError as e:
-        print("[GROUNDED RESPONSE] Gemini unavailable, using deterministic fallback:", str(e))
+    except GeminiServiceError:
+        print("[GROUNDED RESPONSE] Gemini unavailable, using deterministic fallback")
     except Exception as e:  # noqa: BLE001 - never let a Gemini-layer problem crash /chat
-        print("[GROUNDED RESPONSE] unexpected error, using deterministic fallback:", str(e))
+        print(f"[GROUNDED RESPONSE] unexpected error ({type(e).__name__}), using deterministic fallback")
 
     if len(results) == 1:
         return format_response(results[0])

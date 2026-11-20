@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import click
 from flask_cors import CORS
+from werkzeug.exceptions import RequestEntityTooLarge, ServiceUnavailable
 from config import Config
 from database import init_db
 from auth_routes import auth_bp
@@ -107,6 +108,11 @@ def health():
     return jsonify({"status": "ok"})
 
 
+@app.errorhandler(ServiceUnavailable)
+def service_unavailable(_error):
+    return jsonify({"error": "Service temporarily unavailable"}), 503
+
+
 # Home route
 @app.route('/')
 def home():
@@ -169,9 +175,9 @@ def chat():
             return rate_limit.too_many_requests(
                 retry_after, {"reply": "You're sending messages too quickly. Please wait a moment and try again."})
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
-        if not data or 'message' not in data:
+        if not isinstance(data, dict) or 'message' not in data:
             return jsonify({"reply": "Invalid request"}), 400
 
         user_input = data['message']
@@ -194,9 +200,13 @@ def chat():
             if current_user is None:
                 return jsonify({"error": "Authentication required"}), 401
 
+            if isinstance(conversation_id_raw, bool) or not isinstance(conversation_id_raw, (int, str)):
+                return jsonify({"error": "Invalid conversation_id"}), 400
             try:
                 conversation_id = int(conversation_id_raw)
-            except (TypeError, ValueError):
+            except ValueError:
+                return jsonify({"error": "Invalid conversation_id"}), 400
+            if conversation_id <= 0:
                 return jsonify({"error": "Invalid conversation_id"}), 400
 
             from conversations_service import ConversationNotFoundError, get_owned_conversation
@@ -230,7 +240,9 @@ def chat():
 
         return jsonify({"reply": result})
 
-    except Exception as e:
+    except (RequestEntityTooLarge, ServiceUnavailable):
+        raise
+    except Exception:
         traceback.print_exc()
         return jsonify({"reply": "Something went wrong"}), 500
 

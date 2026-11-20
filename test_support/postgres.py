@@ -20,7 +20,7 @@ def _pg_command(bin_dir, program, *args):
     result = subprocess.run(
         [str(executable), *map(str, args)],
         env=environment, text=True, errors="replace", stdout=output,
-        stderr=subprocess.STDOUT, timeout=60,
+        stdin=subprocess.DEVNULL, stderr=subprocess.STDOUT, timeout=60,
     )
     assert result.returncode == 0, result.stdout or f"{program} exited with status {result.returncode}"
     return result.stdout
@@ -43,7 +43,9 @@ def postgres_cluster(tmp_path_factory):
 
     log = root / "postgres.log"
     try:
-        _pg_command(bin_dir, "initdb", "-D", data, "-U", "phase19c_test", "-A", "trust", "--no-locale", "-E", "UTF8")
+        # Crash durability does not matter for a cluster removed after the tests.
+        _pg_command(bin_dir, "initdb", "-D", data, "-U", "phase19c_test", "-A", "trust",
+                    "--no-locale", "-E", "UTF8", "--no-sync")
         # The fixture uses TCP on both platforms. Avoid the system socket
         # directory, which is usually writable only by PostgreSQL on Linux.
         _pg_command(bin_dir, "pg_ctl", "start", "-D", data, "-l", log, "-w", "-t", "20",

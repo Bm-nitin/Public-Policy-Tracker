@@ -11,6 +11,8 @@ environment with flask-sqlalchemy + PostgreSQL installed.
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 import models
 from verification_tokens import hash_token
 
@@ -81,7 +83,7 @@ def test_verification_email_contains_a_verification_link(
 ):
     _register(registration_client, mock_email_service, valid_registration_payload)
     body = mock_email_service[0]["body"]
-    assert "https://test.example/verify-email?token=" in body
+    assert "https://test.example/verify-email.html#token=" in body
 
 
 # --- 6-7: valid token verifies user, then becomes unusable -----------------
@@ -117,6 +119,25 @@ def test_valid_token_becomes_unusable_after_verification(
 
     second = registration_client.get(f"/api/auth/verify-email?token={raw_token}")
     assert second.status_code == 400
+
+
+def test_post_verification_accepts_the_emailed_token_once(
+    registration_client, mock_email_service, valid_registration_payload
+):
+    _register(registration_client, mock_email_service, valid_registration_payload)
+    token = _extract_token_from_email(mock_email_service)
+    path = "/api/auth/verify-email"
+
+    result = registration_client.post(path, json={"token": token})
+    assert result.status_code == 200
+    assert result.get_json()["user"]["email_verified"] is True
+    assert registration_client.post(path, json={"token": token}).status_code == 400
+
+
+@pytest.mark.parametrize("payload", [["token"], {"token": ["not a string"]}, {"token": "\ud800"}])
+def test_post_verification_rejects_malformed_tokens(registration_client, payload):
+    result = registration_client.post("/api/auth/verify-email", json=payload)
+    assert result.status_code == 400
 
 
 # --- 8-11: expired / invalid / missing / already-used tokens rejected ------

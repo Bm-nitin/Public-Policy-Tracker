@@ -15,7 +15,9 @@ email implementation), keeping SMTP details out of the route layer.
 """
 
 import smtplib
+import ssl
 from email.message import EmailMessage
+from urllib.parse import urlencode
 
 from config import Config
 from verification_tokens import TOKEN_EXPIRY_HOURS
@@ -46,7 +48,7 @@ def send_email(to_email, subject, body_text):
     try:
         with smtplib.SMTP(Config.MAIL_HOST, Config.MAIL_PORT, timeout=10) as server:
             if Config.MAIL_USE_TLS:
-                server.starttls()
+                server.starttls(context=ssl.create_default_context())
             if Config.MAIL_USERNAME and Config.MAIL_PASSWORD:
                 server.login(Config.MAIL_USERNAME, Config.MAIL_PASSWORD)
             server.send_message(message)
@@ -62,7 +64,7 @@ def build_verification_email(user_name, verification_url):
     body = (
         f"Hi {user_name},\n\n"
         f"Thanks for registering with {APP_NAME}. Please verify your "
-        f"email address by visiting the link below:\n\n"
+        f"email address by opening the link below and selecting Verify email:\n\n"
         f"{verification_url}\n\n"
         f"This link expires in {TOKEN_EXPIRY_HOURS} hours and can only be "
         f"used once.\n\n"
@@ -77,7 +79,7 @@ def build_verification_url(raw_token):
     if not Config.FRONTEND_URL:
         raise EmailSendError("Cannot build a verification link: FRONTEND_URL is not configured.")
     base = Config.FRONTEND_URL.rstrip("/")
-    return f"{base}/verify-email?token={raw_token}"
+    return f"{base}/verify-email.html#{urlencode({'token': raw_token})}"
 
 
 def send_verification_email(user, raw_token):
@@ -111,7 +113,7 @@ def build_password_reset_url(raw_token):
     if not Config.FRONTEND_URL:
         raise EmailSendError("Cannot build a password reset link: FRONTEND_URL is not configured.")
     base = Config.FRONTEND_URL.rstrip("/")
-    return f"{base}/reset-password?token={raw_token}"
+    return f"{base}/reset-password#{urlencode({'token': raw_token})}"
 
 
 def send_password_reset_email(user, raw_token):

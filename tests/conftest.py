@@ -197,7 +197,8 @@ except ImportError:
 
     class _ShimColumn:
         def __init__(self, col_type, *extra, primary_key=False, unique=False,
-                     nullable=True, default=None, onupdate=None, index=False):
+                     nullable=True, default=None, onupdate=None, index=False,
+                     server_default=None):
             self.col_type = col_type
             self.foreign_key = next(
                 (item for item in extra if isinstance(item, _ShimForeignKey)), None
@@ -209,6 +210,7 @@ except ImportError:
             # (or usually does) specify explicitly.
             self.nullable = False if primary_key else nullable
             self.default = default
+            self.server_default = server_default
             self.onupdate = onupdate
             self.index = index
             self.name = None
@@ -681,6 +683,8 @@ except ImportError:
             self.DateTime = lambda timezone=False: _ShimColType("DATETIME")
             self.UniqueConstraint = _ShimUniqueConstraint
             self.Index = _ShimIndex
+            self.false = lambda: "0"
+            self.func = types.SimpleNamespace(now=lambda: "CURRENT_TIMESTAMP")
             self.Model = _make_model_base(self)
 
         def init_app(self, app):
@@ -709,6 +713,8 @@ except ImportError:
                             parts.append("NOT NULL")
                         if col.unique:
                             parts.append("UNIQUE")
+                        if col.server_default is not None:
+                            parts.append(f"DEFAULT {col.server_default}")
                     col_defs.append(" ".join(parts))
 
                 table_constraints = []

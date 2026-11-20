@@ -55,15 +55,19 @@ def _iso(value):
 
 class User(db.Model):
     __tablename__ = "users"
+    __table_args__ = (db.UniqueConstraint("email", name="users_email_key"),)
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
-    email = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    email = db.Column(db.String(255), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    email_verified = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    email_verified = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, server_default=db.func.now()
+    )
     updated_at = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+        db.DateTime(timezone=True), nullable=False, default=_utcnow,
+        onupdate=_utcnow, server_default=db.func.now(),
     )
     last_login = db.Column(db.DateTime(timezone=True), nullable=True)
 
@@ -91,23 +95,24 @@ class EmailVerificationToken(db.Model):
     generation/hashing and its docstring for why SHA-256 (not Argon2id) is
     the right choice here.
 
-    No ORM-level ForeignKey()/relationship() is used for user_id - it's a
-    plain indexed integer column. The real foreign-key constraint (with
-    ON DELETE CASCADE) is created in the migration, which is genuine SQL
-    unaffected by the test environment. This keeps the model simple and
-    keeps the offline test double (see tests/conftest.py) honest about
-    what it actually implements, per the Phase 4 brief's "do not add
-    unnecessary complexity."
+    The database deletes verification tokens when their user is deleted.
     """
 
     __tablename__ = "email_verification_tokens"
+    __table_args__ = (
+        db.UniqueConstraint("token_hash", name="email_verification_tokens_token_hash_key"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False, index=True)
-    token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    token_hash = db.Column(db.String(64), nullable=False)
     expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
     used_at = db.Column(db.DateTime(timezone=True), nullable=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, server_default=db.func.now()
+    )
 
     def is_valid(self, now=None):
         """True if this token has not been used and has not expired.
@@ -149,11 +154,18 @@ class UserSession(db.Model):
     """
 
     __tablename__ = "user_sessions"
+    __table_args__ = (
+        db.UniqueConstraint("session_token_hash", name="user_sessions_session_token_hash_key"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False, index=True)
-    session_token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    session_token_hash = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, server_default=db.func.now()
+    )
     expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
     revoked_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
@@ -188,11 +200,18 @@ class PasswordResetToken(db.Model):
     """
 
     __tablename__ = "password_reset_tokens"
+    __table_args__ = (
+        db.UniqueConstraint("token_hash", name="password_reset_tokens_token_hash_key"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False, index=True)
-    token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    token_hash = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, server_default=db.func.now()
+    )
     expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
     used_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
@@ -231,10 +250,8 @@ class PolicyEmbedding(db.Model):
     vector, and bookkeeping to detect staleness - never name/category/
     sub_category/change/impact.
 
-    policy_id is a plain Integer, not a ForeignKey: there is no
-    `policies` table to reference any more (see the NOTE above), and
-    policy_id's only real "foreign key" is policy_loader.py's stable,
-    deterministically-assigned id (see that module's docstring). A
+    policy_id stores the id assigned by policy_loader.py from the current
+    JSON dataset. The legacy policies table is historical data. A
     row here whose policy_id no longer exists in the current JSON
     dataset (a policy was removed) is inert - it simply never gets
     matched against any live policy - rather than being a referential-
@@ -262,18 +279,20 @@ class PolicyEmbedding(db.Model):
     reference back to the JSON content itself is stored here.
     """
     __tablename__ = "policy_embeddings"
+    __table_args__ = (db.UniqueConstraint("policy_id", name="uq_policy_embeddings_policy_id"),)
 
     id = db.Column(db.Integer, primary_key=True)
-    policy_id = db.Column(db.Integer, nullable=False, unique=True, index=True)
+    policy_id = db.Column(db.Integer, nullable=False, index=True)
     embedding = db.Column(db.Text, nullable=False)
     embedding_dim = db.Column(db.Integer, nullable=False)
     content_hash = db.Column(db.String(64), nullable=False)
     model = db.Column(db.String(120), nullable=False)
     created_at = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=_utcnow
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, server_default=db.func.now()
     )
     updated_at = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+        db.DateTime(timezone=True), nullable=False, default=_utcnow,
+        onupdate=_utcnow, server_default=db.func.now(),
     )
 
     def __repr__(self):
@@ -304,10 +323,12 @@ class Conversation(db.Model):
         db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
     )
     title = db.Column(db.String(MAX_TITLE_LENGTH), nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow, server_default=db.func.now()
+    )
     updated_at = db.Column(
         db.DateTime(timezone=True), nullable=False, default=_utcnow,
-        onupdate=_utcnow, index=True,
+        onupdate=_utcnow, index=True, server_default=db.func.now(),
     )
 
     def to_dict(self):
@@ -354,7 +375,10 @@ class Message(db.Model):
     )
     role = db.Column(db.String(20), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow,
+        index=True, server_default=db.func.now(),
+    )
     metadata_json = db.Column(db.Text, nullable=True)
 
     def to_dict(self):
@@ -396,11 +420,8 @@ class SavedPolicy(db.Model):
     module's docstring - going stale/absent if the policy is later
     removed from the JSON entirely).
 
-    policy_id is a plain Integer, not a ForeignKey - same reasoning as
-    PolicyEmbedding.policy_id (see that model's docstring): there is no
-    `policies` table any more to reference, and this column's only real
-    "foreign key" is policy_loader.py's stable, deterministically-
-    assigned id.
+    policy_id refers to the current JSON dataset, like
+    PolicyEmbedding.policy_id.
 
     The (user_id, policy_id) unique constraint is the actual
     duplicate-prevention mechanism at the database level - genuinely
@@ -418,7 +439,10 @@ class SavedPolicy(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     policy_id = db.Column(db.Integer, nullable=False, index=True)
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=_utcnow,
+        index=True, server_default=db.func.now(),
+    )
 
     def to_dict(self):
         return {

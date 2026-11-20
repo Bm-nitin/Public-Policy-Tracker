@@ -49,6 +49,12 @@ def get_metadata():
     return target_db.metadata
 
 
+def include_object(_object, name, type_, reflected, compare_to):
+    # The legacy policies table holds historical records. Runtime policy data
+    # comes from JSON, so there is no corresponding ORM table to compare.
+    return not (type_ == 'table' and name == 'policies' and reflected and compare_to is None)
+
+
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 
@@ -88,7 +94,9 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
 
-    conf_args = current_app.extensions['migrate'].configure_args
+    conf_args = dict(current_app.extensions['migrate'].configure_args)
+    conf_args['include_object'] = include_object
+    conf_args.setdefault('compare_server_default', True)
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
 

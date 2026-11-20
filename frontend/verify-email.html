@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Verify Email | Policy Tracker</title>
+    <link rel="stylesheet" href="shared/shared.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+<body data-page="" data-header="simple">
+
+<div id="app-header"></div>
+
+<main class="auth-main">
+    <div class="auth-container">
+        <div class="form-container card">
+            <h1>Verify your email</h1>
+            <form id="verifyEmailForm" hidden>
+                <p class="auth-subtext">Confirm your email address to finish setting up your account.</p>
+                <button type="submit" class="btn btn-primary btn-block">Verify email</button>
+                <a href="verify-email.html" class="auth-link">Request a new link</a>
+            </form>
+
+            <form id="resendVerificationForm" hidden>
+                <p class="auth-subtext">Enter your account email to request a new verification link.</p>
+                <div class="field">
+                    <label for="verificationEmail">Email</label>
+                    <input type="email" id="verificationEmail" autocomplete="email" autocapitalize="none" maxlength="255" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Send verification link</button>
+            </form>
+
+            <p id="verificationStatus" class="form-status" role="status" aria-live="polite"></p>
+            <noscript><p>Enable JavaScript to verify your email or request a new link.</p></noscript>
+            <div><a href="login.html" id="verificationSignIn" class="auth-link">Back to sign in</a></div>
+        </div>
+    </div>
+</main>
+
+<div id="app-footer"></div>
+
+<script src="shared/shared.js"></script>
+<script src="auth.js"></script>
+<script src="verify-email.js"></script>
+
+</body>
+</html>

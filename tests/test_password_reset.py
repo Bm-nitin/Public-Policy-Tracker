@@ -93,7 +93,7 @@ def test_forgot_password_sends_reset_email_for_eligible_account(
     _forgot_password(registration_client, valid_registration_payload["email"])
     assert len(mock_email_service) == 1
     assert mock_email_service[0]["to"] == "ada@example.com"
-    assert "reset-password?token=" in mock_email_service[0]["body"]
+    assert "reset-password#token=" in mock_email_service[0]["body"]
 
 
 def test_forgot_password_allows_unverified_accounts(

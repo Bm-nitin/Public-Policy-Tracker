@@ -1,0 +1,5 @@
+# Install with requirements.txt and requirements-dev.txt for browser testing.
+-c constraints.txt
+
+playwright
+pytest-playwright

@@ -32,13 +32,16 @@ def test_gemini_none_text_response_returns_fallback_message(chatbot_module, mock
     )
 
 
-def test_gemini_raises_exception_returns_unavailable_message(chatbot_module, mock_gemini_client):
-    mock_gemini_client(raise_exc=RuntimeError("simulated network failure"))
-    result = chatbot_module.call_generative_ai("some question")
+def test_gemini_raises_exception_returns_unavailable_message(chatbot_module, mock_gemini_client, capsys):
+    mock_gemini_client(raise_exc=RuntimeError("provider-details-canary"))
+    result = chatbot_module.call_generative_ai("private-input-canary")
     assert result == (
         "AI assistance is currently unavailable. "
         "Please try a policy-related question from the available sectors."
     )
+    logs = capsys.readouterr()
+    assert "private-input-canary" not in logs.out + logs.err
+    assert "provider-details-canary" not in logs.out + logs.err
 
 
 def test_gemini_missing_api_key_returns_unavailable_message_without_calling_client(

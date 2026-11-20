@@ -81,7 +81,9 @@ def _parse_conversation_id(raw_id):
 @conversations_bp.route("", methods=["POST"])
 @login_required
 def create_conversation_route():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) if request.get_data() else {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Malformed request body"}), 400
     # Mass-assignment guard: only `title`/`first_message` are ever read
     # from the body - nothing else in the payload (e.g. a client-
     # supplied `user_id` or `id`) has any effect on what gets created.

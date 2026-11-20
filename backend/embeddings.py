@@ -128,7 +128,7 @@ def embed_text(text, task_type="RETRIEVAL_DOCUMENT"):
     except EmbeddingError:
         raise
     except Exception as e:  # noqa: BLE001 - any provider/SDK failure degrades the same way
-        raise EmbeddingError(f"Embedding request failed: {e}") from e
+        raise EmbeddingError(f"Embedding request failed ({type(e).__name__}).") from None
 
     if len(values) != Config.EMBEDDING_DIMENSIONS:
         raise EmbeddingError(

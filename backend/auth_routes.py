@@ -5,6 +5,7 @@ reset endpoints.
 Phase 3 added POST /api/auth/register. Phase 4 added:
     GET  /api/auth/verify-email?token=<token>
     POST /api/auth/resend-verification
+The static verification page uses POST /api/auth/verify-email with a JSON token.
 
 Phase 5 added:
     POST /api/auth/login
@@ -184,7 +185,7 @@ def register():
     }), 201
 
 
-@auth_bp.route("/verify-email", methods=["GET"])
+@auth_bp.route("/verify-email", methods=["GET", "POST"])
 def verify_email():
     if not Config.DATABASE_URL:
         return _database_unavailable_response("Email verification")
@@ -193,8 +194,8 @@ def verify_email():
     if blocked:
         return blocked
 
-    raw_token = request.args.get("token")
-    if not raw_token:
+    raw_token = _json_object().get("token") if request.method == "POST" else request.args.get("token")
+    if not isinstance(raw_token, str) or not raw_token or not raw_token.isascii():
         message, status = _GENERIC_TOKEN_ERROR
         return jsonify({"error": message}), status
 

@@ -34,7 +34,7 @@ the session cookie are untouched, so the public endpoints (login, register,
 import logging
 from urllib.parse import urlsplit
 
-from flask import jsonify, request
+from flask import current_app, jsonify, request
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -78,6 +78,8 @@ def allowed_origins():
 def _is_allowed_origin(origin):
     if origin in allowed_origins():
         return True
+    if current_app.config.get("DEPLOYMENT_HTTPS"):
+        return origin == f"https://{request.host.lower()}"
     own = urlsplit(request.host_url).netloc.lower()   # same-origin (scheme-insensitive: TLS may end at a proxy)
     parts = urlsplit(origin)
     return bool(parts.netloc) and parts.netloc.lower() == own
@@ -113,7 +115,7 @@ def _reject_oversized():
 def init_security(app):
     app.config["MAX_CONTENT_LENGTH"] = Config.MAX_REQUEST_BYTES
 
-    if Config.TRUSTED_PROXY_COUNT > 0:
+    if Config.TRUSTED_PROXY_COUNT > 0 and not Config.RENDER_EDGE_HEADERS:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=Config.TRUSTED_PROXY_COUNT, x_proto=0, x_host=0, x_port=0, x_prefix=0)
 
     @app.before_request

@@ -207,9 +207,9 @@ def test_embed_text_wraps_provider_failures(monkeypatch):
     import embeddings
 
     monkeypatch.setattr(config.Config, "GEMINI_API_KEY", "fake-key-for-test")
-    _install_fake_genai(monkeypatch, exc=RuntimeError("provider is down"))
+    _install_fake_genai(monkeypatch, exc=RuntimeError("provider failure: fake-key-for-test"))
 
-    with pytest.raises(embeddings.EmbeddingError):
+    with pytest.raises(embeddings.EmbeddingError, match=r"^Embedding request failed \(RuntimeError\)\.$"):
         embeddings.embed_text("some text")
 
 

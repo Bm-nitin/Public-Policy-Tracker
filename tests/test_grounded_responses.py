@@ -316,7 +316,7 @@ def test_generate_grounded_response_never_logs_the_api_key(monkeypatch, capsys):
     import gemini_service
 
     monkeypatch.setattr(config.Config, "GEMINI_API_KEY", "SUPER_SECRET_KEY_VALUE")
-    _install_fake_genai(monkeypatch, exc=RuntimeError("boom"))
+    _install_fake_genai(monkeypatch, exc=RuntimeError("provider failure: SUPER_SECRET_KEY_VALUE"))
 
     with pytest.raises(gemini_service.GeminiServiceError):
         gemini_service.generate_grounded_response("q", "context", "sys")

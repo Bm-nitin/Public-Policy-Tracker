@@ -34,6 +34,9 @@ Import safety (unchanged from Phase 2, still required):
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from sqlalchemy.engine import make_url
+
+from config import Config
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -44,6 +47,25 @@ def init_db(app, database_url):
     using the given connection string. Only call this when database_url
     is truthy - see app.py, which checks Config.DATABASE_URL before
     calling this."""
+    url = make_url(database_url)
+    if url.drivername in {"postgres", "postgresql"}:
+        url = url.set(drivername="postgresql+psycopg")
+        database_url = url
+    if url.get_backend_name() == "postgresql":
+        production = Config.APP_ENV == "production"
+        connect_args = {"connect_timeout": 2 if production else 5}
+        if production:
+            connect_args["gssencmode"] = "disable"
+        app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {
+            "pool_pre_ping": True,
+            "pool_size": 2,
+            "max_overflow": 0,
+            "pool_timeout": 1 if production else 5,
+            "pool_recycle": 300,
+            "connect_args": connect_args,
+            "hide_parameters": True,
+        })
+
     app.config.setdefault("SQLALCHEMY_DATABASE_URI", database_url)
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
     db.init_app(app)

@@ -133,6 +133,31 @@ def test_create_conversation_with_neither_title_nor_message_uses_default(authed_
     assert resp.get_json()["data"]["title"] == "New Conversation"
 
 
+def test_create_conversation_accepts_an_empty_body(authed_client):
+    client, _ = authed_client
+    response = client.post("/api/conversations")
+
+    assert response.status_code == 201
+    assert response.get_json()["data"]["title"] == "New Conversation"
+
+
+@pytest.mark.parametrize("body, content_type", [
+    ("[1]", "application/json"),
+    ("null", "application/json"),
+    ("{", "application/json"),
+    ("title=test", "text/plain"),
+    ('{"first_message": 1}', "application/json"),
+])
+def test_create_conversation_rejects_malformed_input_without_creating_a_row(
+    authed_client, body, content_type
+):
+    client, _ = authed_client
+    response = client.post("/api/conversations", data=body, content_type=content_type)
+
+    assert response.status_code == 400
+    assert client.get("/api/conversations").get_json()["data"] == []
+
+
 def test_create_conversation_rejects_oversized_title(authed_client):
     from models import MAX_TITLE_LENGTH
     client, user_id = authed_client
@@ -714,6 +739,15 @@ def test_chat_with_conversation_id_requires_authentication():
 
     resp = client.post("/chat", json={"message": "hello", "conversation_id": 1})
     assert resp.status_code == 401
+
+
+@pytest.mark.parametrize("conversation_id", [True, 1.5, 0, "-1", "abc"])
+def test_chat_rejects_invalid_conversation_ids(authed_client, conversation_id):
+    client, _ = authed_client
+    response = client.post("/chat", json={"message": "hello", "conversation_id": conversation_id})
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid conversation_id"}
 
 
 def test_chat_with_conversation_id_requires_ownership(two_users_and_clients):

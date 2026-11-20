@@ -61,11 +61,8 @@ def generate_grounded_response(user_query, context, system_instruction):
     malformed/empty response propagate as something a caller has to know
     google-genai's internals to handle, and never includes the raw
     underlying exception's text in the message it raises (that could
-    contain request/response internals) - callers that log this
-    exception get a clean, fixed message, not provider internals; the
-    real underlying error is only ever printed server-side (see
-    backend/chatbot.py's existing convention for this, e.g.
-    call_generative_ai()'s own `print("[AI ERROR]", ...)`).
+    contain request/response internals). Log only the provider exception
+    class and raise a fixed message without the original traceback chain.
     """
     if not Config.GEMINI_API_KEY:
         raise GeminiServiceError("Gemini is not configured.")
@@ -89,9 +86,8 @@ def generate_grounded_response(user_query, context, system_instruction):
     except GeminiServiceError:
         raise
     except Exception as e:  # noqa: BLE001 - any provider/SDK/network failure degrades the same way
-        # Server-side only - never forwarded to the caller (see docstring).
-        print("[GEMINI SERVICE ERROR]", str(e))
-        raise GeminiServiceError("Gemini request failed.") from e
+        print(f"[GEMINI SERVICE ERROR] Gemini request failed ({type(e).__name__})")
+        raise GeminiServiceError("Gemini request failed.") from None
 
     text = getattr(response, "text", None)
     if not text or not text.strip():

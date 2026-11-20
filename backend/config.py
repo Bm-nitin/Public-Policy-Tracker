@@ -90,7 +90,7 @@ class Config:
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").strip().lower() not in ("false", "0", "no")
 
     # --- Frontend (Phase 4) ---
-    # Used to build verification links (FRONTEND_URL + "/verify-email?token=...").
+    # Base URL of the static site used to build verification and reset links.
     # Deliberately not defaulted to localhost/Render - see backend/email_service.py.
     FRONTEND_URL = os.getenv("FRONTEND_URL")
 
@@ -150,6 +150,7 @@ class Config:
     # Set it wrongly low behind a proxy and every visitor shares the
     # proxy's address (IP limits then throttle everyone together).
     TRUSTED_PROXY_COUNT = max(0, int(os.getenv("TRUSTED_PROXY_COUNT", 0)))
+    RENDER_EDGE_HEADERS = False  # Enabled by the production entry point on Render.
 
     # Hard ceilings so one request cannot make the server buffer/parse or
     # forward unbounded data (Gemini calls are billed per token).
@@ -169,6 +170,10 @@ class Config:
             problems.append("DATABASE_URL must be set (authentication and rate limiting are database-backed)")
         if not cls.RATE_LIMIT_ENABLED:
             problems.append("RATE_LIMIT_ENABLED must not be false")
+        if cls.MAIL_HOST and not cls.MAIL_USE_TLS:
+            problems.append("MAIL_USE_TLS must be true when SMTP is configured")
+        if cls.MAIL_HOST and not all((cls.MAIL_USERNAME, cls.MAIL_PASSWORD, cls.MAIL_FROM)):
+            problems.append("Configure MAIL_USERNAME, MAIL_PASSWORD and MAIL_FROM together with MAIL_HOST")
         return problems
 
     @classmethod
@@ -275,7 +280,7 @@ class Config:
                 "reset, password change and /chat are NOT rate limited."
             )
 
-        if os.getenv("RENDER") and cls.TRUSTED_PROXY_COUNT == 0:
+        if os.getenv("RENDER") and cls.TRUSTED_PROXY_COUNT == 0 and not cls.RENDER_EDGE_HEADERS:
             warnings.append(
                 "Running on Render but TRUSTED_PROXY_COUNT is 0 - every client "
                 "will appear to come from Render's proxy address, so per-IP "

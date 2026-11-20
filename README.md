@@ -88,6 +88,15 @@ Authentication endpoints
 
 ## Authentication Architecture
 
+Verification emails open `verify-email.html` on `FRONTEND_URL`. The page
+submits the token after the user selects **Verify email** and provides a
+resend form for expired or missing links. Sign-in also links to that form.
+Deploy the API and static frontend together so new links reach the
+verification page and its `POST /api/auth/verify-email` endpoint.
+
+In production, configured SMTP requires `MAIL_USE_TLS=true` and a
+STARTTLS server with a trusted certificate that matches `MAIL_HOST`.
+
 Explain:
 registration
 verification
@@ -403,14 +412,11 @@ no-store`. User chat text is no longer written to the logs.
 
 ### Deployment checklist (backend, Render)
 
-1. Apply the migration: `flask db upgrade` (creates `rate_limit_events`).
-   Until it runs the limiter **fails open** (logged), so login keeps working
-   but is unprotected.
-2. `TRUSTED_PROXY_COUNT=1` - Render puts one proxy in front of the app. With
-   the default `0`, every visitor appears to come from Render's proxy
-   address and per-address limits would be shared by everyone. With `1`,
-   only the address Render's proxy itself appended to `X-Forwarded-For` is
-   used; anything a client sends is ignored.
+1. Apply the migrations before deployment. Production auth and chat return
+   503 if the rate-limit store is unavailable.
+2. Use the [single-origin Render deployment guide](docs/deployment.md). The
+   production entry point uses Render's edge-set client-IP header. For a
+   separate proxy setup, configure the actual trusted hop count.
 3. `APP_ENV=production` - the app then refuses to start if `CORS_ORIGINS` is
    `*`, the cookie is not `Secure`, there is no `DATABASE_URL`, or
    `RATE_LIMIT_ENABLED=false`. Leave it unset for local development.
